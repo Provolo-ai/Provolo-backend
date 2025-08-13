@@ -1,0 +1,34 @@
+info:
+  contact: {}
+paths:
+  /api/v1/payment-webhook:
+    post:
+      consumes:
+      - application/json
+      description: Handles payment webhook events from the payment gateway
+      parameters:
+      - description: Payment Webhook Data
+        in: body
+        name: webhook
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Handle payment webhook
+      tags:
+      - payments
+swagger: "2.0"
