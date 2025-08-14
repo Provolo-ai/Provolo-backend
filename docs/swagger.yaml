@@ -1,5 +1,35 @@
 basePath: /
 definitions:
+  handlers.PaymentWebhookSample:
+    properties:
+      amount:
+        example: 100.5
+        type: number
+      currency:
+        example: USD
+        type: string
+      customer_id:
+        example: cust_abc123
+        type: string
+      event_type:
+        example: payment.completed
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+      payment_method:
+        example: credit_card
+        type: string
+      status:
+        example: completed
+        type: string
+      timestamp:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      transaction_id:
+        example: txn_123456789
+        type: string
+    type: object
   types.APIResponse:
     properties:
       data: {}
@@ -44,11 +74,12 @@ paths:
       description: Handles payment webhook notifications from payment providers -
         accepts any JSON structure
       parameters:
-      - description: Any JSON data structure
+      - description: Sample payment webhook structure (accepts any JSON)
         in: body
         name: request
         required: true
-        schema: {}
+        schema:
+          $ref: '#/definitions/handlers.PaymentWebhookSample'
       produces:
       - application/json
       responses:

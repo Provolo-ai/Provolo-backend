@@ -59,11 +59,13 @@ const docTemplate = `{
                 "summary": "Handle payment webhook",
                 "parameters": [
                     {
-                        "description": "Any JSON data structure",
+                        "description": "Sample payment webhook structure (accepts any JSON)",
                         "name": "request",
                         "in": "body",
                         "required": true,
-                        "schema": {}
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PaymentWebhookSample"
+                        }
                     }
                 ],
                 "responses": {
@@ -84,6 +86,47 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "handlers.PaymentWebhookSample": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number",
+                    "example": 100.5
+                },
+                "currency": {
+                    "type": "string",
+                    "example": "USD"
+                },
+                "customer_id": {
+                    "type": "string",
+                    "example": "cust_abc123"
+                },
+                "event_type": {
+                    "type": "string",
+                    "example": "payment.completed"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "payment_method": {
+                    "type": "string",
+                    "example": "credit_card"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "completed"
+                },
+                "timestamp": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                },
+                "transaction_id": {
+                    "type": "string",
+                    "example": "txn_123456789"
+                }
+            }
+        },
         "types.APIResponse": {
             "type": "object",
             "properties": {
