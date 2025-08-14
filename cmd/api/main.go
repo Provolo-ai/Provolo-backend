@@ -1,27 +1,49 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	_ "provolo-api/docs"
 	"provolo-api/internal/env"
+	"provolo-api/internal/routes"
+	"provolo-api/internal/types"
 
 	_ "github.com/joho/godotenv/autoload"
 )
 
-type application struct {
-	port       int
-	jwtSecret  string
-	swaggerURL string
-}
+// @title Provolo API
+// @version 1.0
+// @description This is the Provolo backend API server
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8000
+// @BasePath /
+// @schemes http https
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
 
 func main() {
-	app := &application{
-		port:       env.GetEnvInt("PORT", 8080),
-		jwtSecret:  env.GetEnvString("JWT_SECRET", "secret"),
-		swaggerURL: env.GetEnvString("SWAGGER_URL", "http://localhost:8080/swagger/doc.json"),
+	port := env.GetEnvInt("PORT", 8080)
+	host := env.GetEnvString("HOST", "localhost")
+
+	config := &types.Config{
+		Port:        port,
+		JwtSecret:   env.GetEnvString("JWT_SECRET", "secret"),
+		Environment: env.GetEnvString("ENVIRONMENT", "development"),
+		SwaggerURL:  fmt.Sprintf("http://%s:%d/swagger/doc.json", host, port),
 	}
 
-	if err := app.serve(); err != nil {
+	if err := routes.StartServer(config); err != nil {
 		log.Fatal(err)
 	}
 }

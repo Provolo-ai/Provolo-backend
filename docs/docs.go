@@ -9,15 +9,44 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "contact": {},
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "API Support",
+            "url": "http://www.swagger.io/support",
+            "email": "support@swagger.io"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/health": {
+            "get": {
+                "description": "Returns a simple message to indicate the service is up",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Get health check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/payment-webhook": {
             "post": {
-                "description": "Handles payment webhook events from the payment gateway",
+                "description": "Handles payment webhook notifications from payment providers - accepts any JSON structure",
                 "consumes": [
                     "application/json"
                 ],
@@ -30,47 +59,65 @@ const docTemplate = `{
                 "summary": "Handle payment webhook",
                 "parameters": [
                     {
-                        "description": "Payment Webhook Data",
-                        "name": "webhook",
+                        "description": "Any JSON data structure",
+                        "name": "request",
                         "in": "body",
                         "required": true,
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
+                        "schema": {}
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/types.APIResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/types.APIResponse"
                         }
                     }
                 }
             }
+        }
+    },
+    "definitions": {
+        "types.APIResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Type \"Bearer\" followed by a space and JWT token.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "",
-	Host:             "",
-	BasePath:         "",
-	Schemes:          []string{},
-	Title:            "",
-	Description:      "",
+	Version:          "1.0",
+	Host:             "localhost:8000",
+	BasePath:         "/",
+	Schemes:          []string{"http", "https"},
+	Title:            "Provolo API",
+	Description:      "This is the Provolo backend API server",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

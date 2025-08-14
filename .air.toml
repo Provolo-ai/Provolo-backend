@@ -13,7 +13,7 @@ tmp_dir = "tmp"
   exclude_unchanged = false
   follow_symlink = false
   full_bin = ""
-  include_dir = []
+  include_dir = ["cmd", "internal"]
   include_ext = ["go", "tpl", "tmpl", "html"]
   include_file = []
   kill_delay = "0s"
@@ -21,7 +21,13 @@ tmp_dir = "tmp"
   poll = false
   poll_interval = 0
   post_cmd = []
-  pre_cmd = []
+  pre_cmd = [
+    "echo 'Cleaning old docs...'",
+    "rm -rf docs/",
+    "echo 'Generating fresh Swagger docs...'",
+    "swag init --dir cmd/api,internal/handlers,internal/routes,internal/types --parseDepth 1 --output docs",
+    "echo 'Swagger generation complete!'"
+  ]
   rerun = false
   rerun_delay = 500
   send_interrupt = false

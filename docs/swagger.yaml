@@ -1,34 +1,75 @@
+basePath: /
+definitions:
+  types.APIResponse:
+    properties:
+      data: {}
+      message:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+    type: object
+host: localhost:8000
 info:
-  contact: {}
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: This is the Provolo backend API server
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Provolo API
+  version: "1.0"
 paths:
-  /api/v1/payment-webhook:
-    post:
-      consumes:
-      - application/json
-      description: Handles payment webhook events from the payment gateway
-      parameters:
-      - description: Payment Webhook Data
-        in: body
-        name: webhook
-        required: true
-        schema:
-          additionalProperties: true
-          type: object
+  /api/v1/health:
+    get:
+      description: Returns a simple message to indicate the service is up
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/types.APIResponse'
+      summary: Get health check
+      tags:
+      - health
+  /api/v1/payment-webhook:
+    post:
+      consumes:
+      - application/json
+      description: Handles payment webhook notifications from payment providers -
+        accepts any JSON structure
+      parameters:
+      - description: Any JSON data structure
+        in: body
+        name: request
+        required: true
+        schema: {}
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.APIResponse'
         "400":
           description: Bad Request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/types.APIResponse'
       summary: Handle payment webhook
       tags:
       - payments
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"
