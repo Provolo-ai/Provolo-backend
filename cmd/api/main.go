@@ -40,7 +40,7 @@ func main() {
 		Port:        port,
 		JwtSecret:   env.GetEnvString("JWT_SECRET", "secret"),
 		Environment: env.GetEnvString("ENVIRONMENT", "development"),
-		SwaggerURL:  fmt.Sprintf("http://%s:%d/swagger/doc.json", host, port),
+		SwaggerURL:  env.GetEnvString("SWAGGER_URL", fmt.Sprintf("http://%s:%d/swagger/doc.json", host, port)),
 	}
 
 	if err := routes.StartServer(config); err != nil {

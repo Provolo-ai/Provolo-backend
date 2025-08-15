@@ -16,16 +16,22 @@ import (
 func SetupRoutes(config *types.Config) http.Handler {
 	g := gin.Default()
 
-	// Global middleware
-	g.Use(middleware.CORS())
+	// Environment-specific CORS
+	if config.Environment == "production" {
+		allowedOrigins := []string{
+			"https://provolo.org",
+			"https://www.provolo.org",
+		}
+		g.Use(middleware.CORSForProduction(allowedOrigins))
+	} else {
+		// Use development CORS (allows all origins)
+		g.Use(middleware.CORS())
+	}
 	g.Use(middleware.Logger())
-
-	// Health check (before API group for easier monitoring)
-	g.GET("/health", handlers.GetHealthCheck(*config))
 
 	v1 := g.Group("/api/v1")
 	{
-		// Health (also available in API group)
+		// Health
 		v1.GET("/health", handlers.GetHealthCheck(*config))
 
 		// Payments Webhook
