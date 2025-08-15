@@ -158,7 +158,7 @@ var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "provolo-api.onrender.com",
 	BasePath:         "/",
-	Schemes:          []string{"http", "https"},
+	Schemes:          []string{"https", "http"},
 	Title:            "Provolo API",
 	Description:      "This is the Provolo backend API server",
 	InfoInstanceName: "swagger",

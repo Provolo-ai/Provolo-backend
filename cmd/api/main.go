@@ -25,7 +25,7 @@ import (
 
 // @host provolo-api.onrender.com
 // @BasePath /
-// @schemes http https
+// @schemes https http
 
 // @securityDefinitions.apikey BearerAuth
 // @in header
