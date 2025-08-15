@@ -23,7 +23,7 @@ import (
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 
-// @host localhost:8000
+// @host provolo-api.onrender.com
 // @BasePath /
 // @schemes http https
 

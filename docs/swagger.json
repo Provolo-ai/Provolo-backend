@@ -19,7 +19,7 @@
         },
         "version": "1.0"
     },
-    "host": "localhost:8000",
+    "host": "provolo-api.onrender.com",
     "basePath": "/",
     "paths": {
         "/api/v1/health": {
