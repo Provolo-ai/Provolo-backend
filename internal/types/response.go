@@ -1,10 +1,10 @@
 package types
 
 type APIResponse struct {
-	Title   string
-	Message string
-	Status  string
-	Data    interface{}
+	Title   string      `json:"title"`
+	Message string      `json:"message"`
+	Status  string      `json:"status"`
+	Data    interface{} `json:"data"`
 }
 
 func NewSuccessResponse(title, message string, data interface{}) APIResponse {

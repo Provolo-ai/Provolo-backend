@@ -27,6 +27,9 @@ go.work.sum
 # env file
 .env
 
+# Firebase Config
+firebaseConfig.json
+
 # Editor/IDE
 # .idea/
 # .vscode/

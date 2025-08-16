@@ -2,6 +2,7 @@ package routes
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"provolo-api/internal/handlers"
 	"provolo-api/internal/middleware"
@@ -21,6 +22,7 @@ func SetupRoutes(config *types.Config) http.Handler {
 		allowedOrigins := []string{
 			"https://provolo.org",
 			"https://www.provolo.org",
+			"http://localhost:5173",
 		}
 		g.Use(middleware.CORSForProduction(allowedOrigins))
 	} else {
@@ -29,10 +31,42 @@ func SetupRoutes(config *types.Config) http.Handler {
 	}
 	g.Use(middleware.Logger())
 
+	// Initialize Firebase auth handler
+	authHandler, err := handlers.NewAuthHandler()
+	if err != nil {
+		log.Fatalf("Failed to initialize auth handler: %v", err)
+	}
+
 	v1 := g.Group("/api/v1")
 	{
 		// Health
 		v1.GET("/health", handlers.GetHealthCheck(*config))
+
+		// Auth routes
+		auth := v1.Group("/auth")
+		{
+			auth.POST("/login", authHandler.Login)
+			auth.GET("/verify", authHandler.VerifySession)
+			auth.POST("/logout", authHandler.Logout)
+		}
+
+		// Protected routes
+		protected := v1.Group("/protected")
+		protected.Use(middleware.AuthMiddleware(authHandler.GetClient()))
+		{
+			protected.GET("/profile", func(c *gin.Context) {
+				userID := c.GetString("userID")
+				userEmail := c.GetString("userEmail")
+				c.JSON(http.StatusOK, types.NewSuccessResponse(
+					"Profile Retrieved",
+					"User profile data",
+					gin.H{
+						"userID": userID,
+						"email":  userEmail,
+					},
+				))
+			})
+		}
 
 		// Payments Webhook
 		v1.POST("/payment-webhook", handlers.PaymentWebhook)
