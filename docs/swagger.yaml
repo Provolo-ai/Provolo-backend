@@ -37,6 +37,25 @@ definitions:
         example: txn_123456789
         type: string
     type: object
+  handlers.PromptReq:
+    properties:
+      full_name:
+        example: John Doe
+        maxLength: 100
+        type: string
+      professional_title:
+        example: Full Stack Developer
+        maxLength: 200
+        type: string
+      profile:
+        example: Experienced developer with 5+ years in web development...
+        maxLength: 1000
+        type: string
+    required:
+    - full_name
+    - professional_title
+    - profile
+    type: object
   types.APIResponse:
     properties:
       data: {}
@@ -47,17 +66,37 @@ definitions:
       title:
         type: string
     type: object
+  types.OptimizerResponse:
+    properties:
+      beforeAfterComparison:
+        minLength: 1
+        type: string
+      optimizedProfileOverview:
+        minLength: 1
+        type: string
+      recommendedVisuals:
+        minLength: 1
+        type: string
+      suggestedProjectTitles:
+        minLength: 1
+        type: string
+      weaknessesAndOptimization:
+        minLength: 1
+        type: string
+    required:
+    - beforeAfterComparison
+    - optimizedProfileOverview
+    - recommendedVisuals
+    - suggestedProjectTitles
+    - weaknessesAndOptimization
+    type: object
 host: provolo-api.onrender.com
 info:
-  contact:
-    email: support@swagger.io
-    name: API Support
-    url: http://www.swagger.io/support
+  contact: {}
   description: This is the Provolo backend API server
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
-  termsOfService: http://swagger.io/terms/
   title: Provolo API
   version: "1.0"
 paths:
@@ -142,6 +181,46 @@ paths:
       summary: Get health check
       tags:
       - health
+  /api/v1/optimize-profile:
+    post:
+      consumes:
+      - application/json
+      description: Analyzes and optimizes a freelancer's profile content using AI
+        to improve client attraction and profile effectiveness
+      parameters:
+      - description: Profile optimization request containing freelancer details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.PromptReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Profile optimization completed successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/types.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/types.OptimizerResponse'
+              type: object
+        "400":
+          description: Bad Request - Invalid input validation
+          schema:
+            $ref: '#/definitions/types.APIResponse'
+        "401":
+          description: Unauthorized - Unauthorized
+          schema:
+            $ref: '#/definitions/types.APIResponse'
+        "500":
+          description: Internal Server Error - AI service or client creation failed
+          schema:
+            $ref: '#/definitions/types.APIResponse'
+      summary: Optimize freelancer profile using AI
+      tags:
+      - Profile Optimization
   /api/v1/payment-webhook:
     post:
       consumes:

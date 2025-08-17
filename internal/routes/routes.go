@@ -57,16 +57,22 @@ func SetupRoutes(config *types.Config) http.Handler {
 			protected.GET("/profile", func(c *gin.Context) {
 				userID := c.GetString("userID")
 				userEmail := c.GetString("userEmail")
+				displayName := c.GetString("displayName")
 				c.JSON(http.StatusOK, types.NewSuccessResponse(
 					"Profile Retrieved",
 					"User profile data",
 					gin.H{
-						"userID": userID,
-						"email":  userEmail,
+						"userID":      userID,
+						"email":       userEmail,
+						"displayName": displayName,
 					},
 				))
 			})
 		}
+
+		// Profile Optimization
+		v1.POST("/optimize-profile", handlers.ProfileOptimizer)
+		// .Use(middleware.AuthMiddleware(authHandler.GetClient()))
 
 		// Payments Webhook
 		v1.POST("/payment-webhook", handlers.PaymentWebhook)

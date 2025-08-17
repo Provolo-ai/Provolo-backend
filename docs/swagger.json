@@ -7,12 +7,7 @@
     "info": {
         "description": "This is the Provolo backend API server",
         "title": "Provolo API",
-        "termsOfService": "http://swagger.io/terms/",
-        "contact": {
-            "name": "API Support",
-            "url": "http://www.swagger.io/support",
-            "email": "support@swagger.io"
-        },
+        "contact": {},
         "license": {
             "name": "Apache 2.0",
             "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
@@ -146,6 +141,70 @@
                 }
             }
         },
+        "/api/v1/optimize-profile": {
+            "post": {
+                "description": "Analyzes and optimizes a freelancer's profile content using AI to improve client attraction and profile effectiveness",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Profile Optimization"
+                ],
+                "summary": "Optimize freelancer profile using AI",
+                "parameters": [
+                    {
+                        "description": "Profile optimization request containing freelancer details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PromptReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Profile optimization completed successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/types.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/types.OptimizerResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request - Invalid input validation",
+                        "schema": {
+                            "$ref": "#/definitions/types.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/types.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - AI service or client creation failed",
+                        "schema": {
+                            "$ref": "#/definitions/types.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/payment-webhook": {
             "post": {
                 "description": "Handles payment webhook notifications from payment providers - accepts any JSON structure",
@@ -240,6 +299,31 @@
                 }
             }
         },
+        "handlers.PromptReq": {
+            "type": "object",
+            "required": [
+                "full_name",
+                "professional_title",
+                "profile"
+            ],
+            "properties": {
+                "full_name": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "example": "John Doe"
+                },
+                "professional_title": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "example": "Full Stack Developer"
+                },
+                "profile": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "example": "Experienced developer with 5+ years in web development..."
+                }
+            }
+        },
         "types.APIResponse": {
             "type": "object",
             "properties": {
@@ -252,6 +336,38 @@
                 },
                 "title": {
                     "type": "string"
+                }
+            }
+        },
+        "types.OptimizerResponse": {
+            "type": "object",
+            "required": [
+                "beforeAfterComparison",
+                "optimizedProfileOverview",
+                "recommendedVisuals",
+                "suggestedProjectTitles",
+                "weaknessesAndOptimization"
+            ],
+            "properties": {
+                "beforeAfterComparison": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "optimizedProfileOverview": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "recommendedVisuals": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "suggestedProjectTitles": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "weaknessesAndOptimization": {
+                    "type": "string",
+                    "minLength": 1
                 }
             }
         }

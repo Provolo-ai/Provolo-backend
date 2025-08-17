@@ -15,7 +15,7 @@ func StartServer(config *types.Config) error {
 		Handler:      SetupRoutes(config),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		WriteTimeout: 90 * time.Second,
 	}
 
 	log.Printf("Starting server on port %d", config.Port)
