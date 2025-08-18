@@ -23,6 +23,7 @@ func SetupRoutes(config *types.Config) http.Handler {
 			"https://provolo.org",
 			"https://www.provolo.org",
 			"http://localhost:5173",
+			"https://provolo-front-end-dev-env.vercel.app",
 		}
 		g.Use(middleware.CORSForProduction(allowedOrigins))
 	} else {
@@ -71,8 +72,7 @@ func SetupRoutes(config *types.Config) http.Handler {
 		}
 
 		// Profile Optimization
-		v1.POST("/optimize-profile", handlers.ProfileOptimizer)
-		// .Use(middleware.AuthMiddleware(authHandler.GetClient()))
+		v1.Use(middleware.AuthMiddleware(authHandler.GetClient())).POST("/optimize-profile", handlers.ProfileOptimizer)
 
 		// Payments Webhook
 		v1.POST("/payment-webhook", handlers.PaymentWebhook)
