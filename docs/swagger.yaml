@@ -94,7 +94,7 @@ definitions:
     - suggestedProjectTitles
     - weaknessesAndOptimization
     type: object
-host: provolo-api.onrender.com
+host: provolo-backend.onrender.com
 info:
   contact: {}
   description: This is the Provolo backend API server

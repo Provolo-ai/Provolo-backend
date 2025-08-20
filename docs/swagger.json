@@ -14,7 +14,7 @@
         },
         "version": "1.0"
     },
-    "host": "provolo-api.onrender.com",
+    "host": "provolo-backend.onrender.com",
     "basePath": "/",
     "paths": {
         "/api/v1/auth/login": {

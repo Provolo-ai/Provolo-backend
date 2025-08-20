@@ -398,7 +398,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "provolo-api.onrender.com",
+	Host:             "provolo-backend.onrender.com",
 	BasePath:         "/",
 	Schemes:          []string{"https", "http"},
 	Title:            "Provolo API",
