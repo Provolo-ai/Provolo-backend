@@ -1,6 +1,28 @@
 package utils
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"os"
+	"provolo-api/internal/env"
+	"time"
+
+	"cloud.google.com/go/firestore"
+	firebase "firebase.google.com/go/v4"
+	"google.golang.org/api/option"
+)
+
+type PromptLimitResult struct {
+	Allowed bool `json:"allowed"`
+	Count   int  `json:"count"`
+	Limit   int  `json:"limit"`
+}
+
+type UserPromptLimit struct {
+	UserID       string    `firestore:"userId"`
+	PromptCount  int       `firestore:"promptCount"`
+	LastPromptAt time.Time `firestore:"lastPromptAt"`
+}
 
 func OptimizerPrompt(inputContent string) string {
 	return fmt.Sprintf(`You are a specialized AI portfolio consultant trained to optimize freelancer profiles (like those on Upwork or personal websites). 
@@ -63,4 +85,198 @@ func OptimizerPrompt(inputContent string) string {
 
 		CRITICAL: Your response must be ONLY a valid JSON object. Do not include any text before or after the JSON. Start directly with { and end with }.
 	`, inputContent)
+}
+
+// CheckUserPromptLimit checks if user has reached daily limit without updating count
+func CheckUserPromptLimit(ctx context.Context, app *firebase.App, userID string, limit int) (*PromptLimitResult, error) {
+	if limit <= 0 {
+		limit = env.GetEnvInt("MAX_PROMPT_LIMIT", 2)
+	}
+
+	// Get Firestore client
+	firestoreClient, err := app.Firestore(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Firestore client: %v", err)
+	}
+	defer firestoreClient.Close()
+
+	now := time.Now()
+	result := &PromptLimitResult{
+		Allowed: false,
+		Count:   0,
+		Limit:   limit,
+	}
+
+	// Query for existing user prompt limit document
+	collectionRef := firestoreClient.Collection("user_prompt_limits")
+	query := collectionRef.Where("userId", "==", userID)
+	iter := query.Documents(ctx)
+
+	docs, err := iter.GetAll()
+	if err != nil {
+		return nil, fmt.Errorf("failed to query user prompt limits: %v", err)
+	}
+
+	if len(docs) == 0 {
+		// New user - allow first prompt
+		result.Allowed = true
+		result.Count = 0 // Current count is 0, will be 1 after update
+		return result, nil
+	}
+
+	// Get existing document
+	doc := docs[0]
+	var existingData UserPromptLimit
+	if err := doc.DataTo(&existingData); err != nil {
+		return nil, fmt.Errorf("failed to parse existing document: %v", err)
+	}
+
+	// Check if it's the same day
+	if isSameDay(existingData.LastPromptAt, now) {
+		// Same day - check if limit would be reached
+		if existingData.PromptCount >= limit {
+			result.Count = existingData.PromptCount
+			return result, nil // Not allowed, limit reached
+		}
+
+		// Allow prompt, count will be incremented later
+		result.Allowed = true
+		result.Count = existingData.PromptCount
+		return result, nil
+	}
+
+	// New day - allow prompt, count will be reset to 1 later
+	result.Allowed = true
+	result.Count = 0 // Will be reset to 1 after update
+	return result, nil
+}
+
+// UpdateUserPromptLimit increments the user's prompt count after successful API call
+func UpdateUserPromptLimit(ctx context.Context, app *firebase.App, userID string) error {
+	// Get Firestore client
+	firestoreClient, err := app.Firestore(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get Firestore client: %v", err)
+	}
+	defer firestoreClient.Close()
+
+	now := time.Now()
+
+	// Query for existing user prompt limit document
+	collectionRef := firestoreClient.Collection("user_prompt_limits")
+	query := collectionRef.Where("userId", "==", userID)
+	iter := query.Documents(ctx)
+
+	docs, err := iter.GetAll()
+	if err != nil {
+		return fmt.Errorf("failed to query user prompt limits: %v", err)
+	}
+
+	if len(docs) == 0 {
+		// Create new document for user with count 1 (first prompt)
+		newDoc := UserPromptLimit{
+			UserID:       userID,
+			PromptCount:  1,
+			LastPromptAt: now,
+		}
+
+		_, _, addErr := collectionRef.Add(ctx, newDoc)
+		if addErr != nil {
+			return fmt.Errorf("failed to create user prompt limit document: %v", addErr)
+		}
+		return nil
+	}
+
+	// Get existing document
+	doc := docs[0]
+	var existingData UserPromptLimit
+	if parseErr := doc.DataTo(&existingData); parseErr != nil {
+		return fmt.Errorf("failed to parse existing document: %v", parseErr)
+	}
+
+	// Check if it's the same day
+	if isSameDay(existingData.LastPromptAt, now) {
+		// Same day - increment count
+		newCount := existingData.PromptCount + 1
+
+		_, updateErr := doc.Ref.Update(ctx, []firestore.Update{
+			{Path: "promptCount", Value: newCount},
+			{Path: "lastPromptAt", Value: now},
+		})
+		if updateErr != nil {
+			return fmt.Errorf("failed to update prompt count: %v", updateErr)
+		}
+		return nil
+	}
+
+	// New day - reset count to 1
+	_, resetErr := doc.Ref.Update(ctx, []firestore.Update{
+		{Path: "promptCount", Value: 1},
+		{Path: "lastPromptAt", Value: now},
+	})
+	if resetErr != nil {
+		return fmt.Errorf("failed to reset daily prompt count: %v", resetErr)
+	}
+
+	return nil
+}
+
+// isSameDay checks if two times are on the same calendar day
+func isSameDay(t1, t2 time.Time) bool {
+	y1, m1, d1 := t1.Date()
+	y2, m2, d2 := t2.Date()
+	return y1 == y2 && m1 == m2 && d1 == d2
+}
+
+// GetFirebaseApp creates and returns a Firebase app instance with proper configuration
+func GetFirebaseApp(ctx context.Context) (*firebase.App, error) {
+	// Try to get encoded config from environment first
+	encodedConfig := env.GetEnvString("FIREBASE_ENCODED_CONFIG", "")
+	secretKey := env.GetEnvString("FIREBASE_SECRET_KEY", "")
+
+	var opt option.ClientOption
+
+	if encodedConfig != "" && secretKey != "" {
+		// Decode the Firebase config
+		configData, err := DecodeFirebaseConfig(encodedConfig, secretKey)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding Firebase config: %v", err)
+		}
+
+		// Create credentials from JSON data
+		opt = option.WithCredentialsJSON(configData)
+	} else {
+		// Fallback to encoded file if environment variables are not set
+		if _, err := os.Stat("firebase_config_encoded.txt"); err == nil {
+			// Read encoded config from file
+			encodedData, err := os.ReadFile("firebase_config_encoded.txt")
+			if err != nil {
+				return nil, fmt.Errorf("error reading encoded config file: %v", err)
+			}
+
+			if secretKey == "" {
+				return nil, fmt.Errorf("FIREBASE_SECRET_KEY environment variable is required")
+			}
+
+			// Decode the Firebase config
+			configData, err := DecodeFirebaseConfig(string(encodedData), secretKey)
+			if err != nil {
+				return nil, fmt.Errorf("error decoding Firebase config: %v", err)
+			}
+
+			// Create credentials from JSON data
+			opt = option.WithCredentialsJSON(configData)
+		} else {
+			// Final fallback to original file (for development)
+			opt = option.WithCredentialsFile("firebaseConfig.json")
+		}
+	}
+
+	// Initialize Firebase Admin SDK
+	app, err := firebase.NewApp(ctx, nil, opt)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing Firebase app: %v", err)
+	}
+
+	return app, nil
 }

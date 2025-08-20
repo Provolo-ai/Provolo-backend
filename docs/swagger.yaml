@@ -71,6 +71,9 @@ definitions:
       beforeAfterComparison:
         minLength: 1
         type: string
+      fullAnalysis:
+        minLength: 1
+        type: string
       optimizedProfileOverview:
         minLength: 1
         type: string
@@ -85,6 +88,7 @@ definitions:
         type: string
     required:
     - beforeAfterComparison
+    - fullAnalysis
     - optimizedProfileOverview
     - recommendedVisuals
     - suggestedProjectTitles
@@ -212,6 +216,10 @@ paths:
             $ref: '#/definitions/types.APIResponse'
         "401":
           description: Unauthorized - Unauthorized
+          schema:
+            $ref: '#/definitions/types.APIResponse'
+        "429":
+          description: Too Many Requests - Daily limit exceeded
           schema:
             $ref: '#/definitions/types.APIResponse'
         "500":

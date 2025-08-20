@@ -198,6 +198,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/types.APIResponse"
                         }
                     },
+                    "429": {
+                        "description": "Too Many Requests - Daily limit exceeded",
+                        "schema": {
+                            "$ref": "#/definitions/types.APIResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error - AI service or client creation failed",
                         "schema": {
@@ -345,6 +351,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "beforeAfterComparison",
+                "fullAnalysis",
                 "optimizedProfileOverview",
                 "recommendedVisuals",
                 "suggestedProjectTitles",
@@ -352,6 +359,10 @@ const docTemplate = `{
             ],
             "properties": {
                 "beforeAfterComparison": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "fullAnalysis": {
                     "type": "string",
                     "minLength": 1
                 },

@@ -50,40 +50,92 @@ func validateInput(fieldName, input string, maxLength int) error {
 // @Success 200 {object} types.APIResponse{data=types.OptimizerResponse} "Profile optimization completed successfully"
 // @Failure 400 {object} types.APIResponse "Bad Request - Invalid input validation"
 // @Failure 401 {object} types.APIResponse "Unauthorized - Unauthorized"
+// @Failure 429 {object} types.APIResponse "Too Many Requests - Daily limit exceeded"
 // @Failure 500 {object} types.APIResponse "Internal Server Error - AI service or client creation failed"
 // @Router /api/v1/optimize-profile [post]
 // Profile Optimizer
 func ProfileOptimizer(c *gin.Context) {
+	// Get user ID from auth context (set by AuthMiddleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, types.NewErrorResponse(
+			"Unauthorized",
+			"User not authenticated",
+		))
+		return
+	}
+
+	userIDStr, ok := userID.(string)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, types.NewErrorResponse(
+			"Internal Error",
+			"Invalid user ID format",
+		))
+		return
+	}
+
+	// Check rate limit before processing
+	ctx := context.Background()
+	firebaseApp, err := utils.GetFirebaseApp(ctx)
+	if err != nil {
+		log.Printf("Error getting Firebase app: %v", err)
+		c.JSON(http.StatusInternalServerError, types.NewErrorResponse(
+			"Internal Server Error",
+			"Failed to initialize Firebase",
+		))
+		return
+	}
+
+	// Get current limit from environment
+	dailyLimit := env.GetEnvInt("MAX_PROMPT_LIMIT", 2)
+	limitResult, err := utils.CheckUserPromptLimit(ctx, firebaseApp, userIDStr, dailyLimit)
+	if err != nil {
+		log.Printf("Error checking rate limit: %v", err)
+		c.JSON(http.StatusInternalServerError, types.NewErrorResponse(
+			"Internal Server Error",
+			"Failed to check rate limit",
+		))
+		return
+	}
+
+	if !limitResult.Allowed {
+		c.JSON(http.StatusTooManyRequests, types.NewErrorResponse(
+			"Rate Limit Exceeded",
+			fmt.Sprintf("Daily limit of %d prompts exceeded. Current count: %d. Try again tomorrow.", limitResult.Limit, limitResult.Count),
+		))
+		return
+	}
+
 	var req PromptReq
-	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(http.StatusBadGateway, types.NewErrorResponse(
+	if bindErr := c.ShouldBind(&req); bindErr != nil {
+		c.JSON(http.StatusBadRequest, types.NewErrorResponse(
 			"Invalid Request",
-			"Invalid request body: "+err.Error(),
+			"Invalid request body: "+bindErr.Error(),
 		))
 		return
 	}
 
 	// Validate input lengths and content
-	if err := validateInput("Full Name", req.FullName, 100); err != nil {
+	if validateErr := validateInput("Full Name", req.FullName, 100); validateErr != nil {
 		c.JSON(http.StatusBadRequest, types.NewErrorResponse(
 			"Validation Error",
-			err.Error(),
+			validateErr.Error(),
 		))
 		return
 	}
 
-	if err := validateInput("Professional Title", req.ProfessionalTitle, 200); err != nil {
+	if validateErr := validateInput("Professional Title", req.ProfessionalTitle, 200); validateErr != nil {
 		c.JSON(http.StatusBadRequest, types.NewErrorResponse(
 			"Validation Error",
-			err.Error(),
+			validateErr.Error(),
 		))
 		return
 	}
 
-	if err := validateInput("Profile", req.Profile, 5000); err != nil {
+	if validateErr := validateInput("Profile", req.Profile, 5000); validateErr != nil {
 		c.JSON(http.StatusBadRequest, types.NewErrorResponse(
 			"Validation Error",
-			err.Error(),
+			validateErr.Error(),
 		))
 		return
 	}
@@ -101,8 +153,6 @@ func ProfileOptimizer(c *gin.Context) {
 
 	content := utils.OptimizerPrompt(inputContent)
 
-	ctx := context.Background()
-
 	client, err := genai.NewClient(ctx, &genai.ClientConfig{
 		APIKey: env.GetEnvString("GEMINI_API_KEY", ""),
 	})
@@ -112,6 +162,7 @@ func ProfileOptimizer(c *gin.Context) {
 			"Internal Server Error",
 			"Failed to create Gemini client: "+err.Error(),
 		))
+		return
 	}
 
 	result, err := client.Models.GenerateContent(
@@ -129,6 +180,8 @@ func ProfileOptimizer(c *gin.Context) {
 		return
 	}
 
+	// After successful Gemini response parsing, but BEFORE sending JSON response:
+	log.Printf("Gemini response: %s", result.Text())
 	parsedResponse, err := utils.ParseGeminiJSONBlock(result.Text())
 	if err != nil {
 		log.Printf("Error parsing Gemini response: %v", err)
@@ -137,6 +190,12 @@ func ProfileOptimizer(c *gin.Context) {
 			"Failed to process AI response: "+err.Error(),
 		))
 		return
+	}
+
+	// Update the count after successful processing but before sending response
+	if err := utils.UpdateUserPromptLimit(ctx, firebaseApp, userIDStr); err != nil {
+		// Log the error but don't fail the request since we already got the response
+		log.Printf("Warning: Failed to update prompt count for user %s: %v", userIDStr, err)
 	}
 
 	log.Printf("Generated content: %v", result)
