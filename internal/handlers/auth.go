@@ -233,6 +233,30 @@ func (h *AuthHandler) VerifySession(c *gin.Context) {
 	))
 }
 
+// GetUserProfile handles the user profile request
+// @Summary Get user profile
+// @Description Retrieves the authenticated user's profile information
+// @Tags auth
+// @Produce json
+// @Success 200 {object} types.APIResponse
+// @Failure 401 {object} types.APIResponse
+// @Router /api/v1/protected/profile [get]
+func (h *AuthHandler) GetUserProfile(c *gin.Context) {
+	userID := c.GetString("userID")
+	userEmail := c.GetString("userEmail")
+	displayName := c.GetString("displayName")
+
+	c.JSON(http.StatusOK, types.NewSuccessResponse(
+		"Profile Retrieved",
+		"User profile data",
+		gin.H{
+			"userID":      userID,
+			"email":       userEmail,
+			"displayName": displayName,
+		},
+	))
+}
+
 // Logout endpoint
 // @Summary User logout
 // @Description Logs out the user by clearing the session cookie

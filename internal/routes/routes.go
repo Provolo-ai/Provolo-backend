@@ -17,6 +17,9 @@ import (
 func SetupRoutes(config *types.Config) http.Handler {
 	g := gin.Default()
 
+	// Global rate limiter - apply to all routes
+	g.Use(middleware.GlobalRateLimiter())
+
 	// Environment-specific CORS
 	if config.Environment == "production" {
 		allowedOrigins := []string{
@@ -43,8 +46,9 @@ func SetupRoutes(config *types.Config) http.Handler {
 		// Health
 		v1.GET("/health", handlers.GetHealthCheck(*config))
 
-		// Auth routes
+		// Auth routes - wiith strict rate limiting to prevent brute force
 		auth := v1.Group("/auth")
+		auth.Use(middleware.StrictRateLimiter())
 		{
 			auth.POST("/login", authHandler.Login)
 			auth.GET("/verify", authHandler.VerifySession)
@@ -53,26 +57,14 @@ func SetupRoutes(config *types.Config) http.Handler {
 
 		// Protected routes
 		protected := v1.Group("/protected")
+		protected.Use(middleware.StrictRateLimiter())
 		protected.Use(middleware.AuthMiddleware(authHandler.GetClient()))
 		{
-			protected.GET("/profile", func(c *gin.Context) {
-				userID := c.GetString("userID")
-				userEmail := c.GetString("userEmail")
-				displayName := c.GetString("displayName")
-				c.JSON(http.StatusOK, types.NewSuccessResponse(
-					"Profile Retrieved",
-					"User profile data",
-					gin.H{
-						"userID":      userID,
-						"email":       userEmail,
-						"displayName": displayName,
-					},
-				))
-			})
+			protected.GET("/profile", authHandler.GetUserProfile)
 		}
 
-		// Profile Optimization
-		v1.Use(middleware.AuthMiddleware(authHandler.GetClient())).POST("/optimize-profile", handlers.ProfileOptimizer)
+		// Profile Optimization with rate limiting for expensive operations
+		v1.Use(middleware.AuthMiddleware(authHandler.GetClient())).Use(middleware.StrictRateLimiter()).POST("/optimize-profile", handlers.ProfileOptimizer)
 
 		// Payments Webhook
 		v1.POST("/payment-webhook", handlers.PaymentWebhook)

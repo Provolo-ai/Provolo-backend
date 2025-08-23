@@ -252,6 +252,32 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/v1/protected/profile": {
+            "get": {
+                "description": "Retrieves the authenticated user's profile information",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Get user profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/types.APIResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
