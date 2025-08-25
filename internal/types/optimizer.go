@@ -9,3 +9,10 @@ type OptimizerResponse struct {
 	RecommendedVisuals        string `json:"recommendedVisuals" validate:"required,min=1"`
 	BeforeAfterComparison     string `json:"beforeAfterComparison" validate:"required,min=1"`
 }
+
+// Error response from Gemini when request is not authorized
+type OptimizerErrorResponse struct {
+	Error   bool   `json:"error"`
+	Message string `json:"message"`
+	Code    string `json:"code"`
+}

@@ -38,6 +38,30 @@ func validateInput(fieldName, input string, maxLength int) error {
 		return fmt.Errorf("%s contains suspicious content", fieldName)
 	}
 
+	// Check for HTML/XML tags that could manipulate response format
+	htmlTagPatterns := regexp.MustCompile(`(?i)<\s*/?\s*(script|iframe|object|embed|form|input|textarea|select|button|link|meta|style|base|title|head|body|html|div|span|img|video|audio|source|track|canvas|svg|math|template|slot|shadow)\s*[^>]*>`)
+	if htmlTagPatterns.MatchString(input) {
+		return fmt.Errorf("%s contains illegal HTML tags", fieldName)
+	}
+
+	// Check for JSON manipulation attempts
+	jsonManipulationPatterns := regexp.MustCompile(`(?i)(\"\s*[,}]|[,{]\s*\"|\\\"|\\n|\\r|\\t|\\\\|\\u[0-9a-f]{4})`)
+	if jsonManipulationPatterns.MatchString(input) {
+		return fmt.Errorf("%s contains potential JSON manipulation characters", fieldName)
+	}
+
+	// Check for format manipulation instructions
+	formatManipulationPatterns := regexp.MustCompile(`(?i)(put.*in.*tag|embed.*into|wrap.*with|format.*as|output.*in|return.*as|generate.*in.*format|inside.*tag|within.*element)`)
+	if formatManipulationPatterns.MatchString(input) {
+		return fmt.Errorf("%s contains format manipulation instructions", fieldName)
+	}
+
+	// Check for system instruction override attempts
+	systemOverridePatterns := regexp.MustCompile(`(?i)(ignore.*instruction|forget.*rule|override.*system|change.*format|modify.*response|alter.*output|bypass.*validation|disable.*check)`)
+	if systemOverridePatterns.MatchString(input) {
+		return fmt.Errorf("%s contains system override attempts", fieldName)
+	}
+
 	return nil
 }
 
@@ -165,11 +189,15 @@ func ProfileOptimizer(c *gin.Context) {
 		return
 	}
 
+	config := &genai.GenerateContentConfig{
+		SystemInstruction: genai.NewContentFromText(utils.OptimizerSystemInstruction(), genai.RoleUser),
+	}
+
 	result, err := client.Models.GenerateContent(
 		ctx,
 		"gemini-2.5-flash",
 		genai.Text(content),
-		nil,
+		config,
 	)
 	if err != nil {
 		log.Printf("Error generating content: %v", err)
@@ -180,14 +208,27 @@ func ProfileOptimizer(c *gin.Context) {
 		return
 	}
 
-	// After successful Gemini response parsing, but BEFORE sending JSON response:
+	// Log the Gemini response
 	log.Printf("Gemini response: %s", result.Text())
+
+	// Parse the response with new error handling
 	parsedResponse, err := utils.ParseGeminiJSONBlock(result.Text())
 	if err != nil {
+		// Check if this is an unauthorized content error
+		if unauthorizedErr, ok := err.(*utils.UnauthorizedContentError); ok {
+			// Return 400 Bad Request for unauthorized content using NewErrorResponse
+			c.JSON(http.StatusBadRequest, types.NewErrorResponse(
+				"Unauthorized Content",
+				unauthorizedErr.Message,
+			))
+			return
+		}
+
+		// Return 500 for actual parsing/technical errors using NewErrorResponse
 		log.Printf("Error parsing Gemini response: %v", err)
 		c.JSON(http.StatusInternalServerError, types.NewErrorResponse(
 			"Processing Error",
-			"Failed to process AI response: "+err.Error(),
+			"Failed to process the optimization request",
 		))
 		return
 	}
@@ -198,9 +239,9 @@ func ProfileOptimizer(c *gin.Context) {
 		log.Printf("Warning: Failed to update prompt count for user %s: %v", userIDStr, err)
 	}
 
-	log.Printf("Generated content: %v", result)
+	// Return success response using NewSuccessResponse
 	c.JSON(http.StatusOK, types.NewSuccessResponse(
-		"Optimization Successfully",
+		"Optimization Successful",
 		"Profile optimized successfully",
 		parsedResponse,
 	))

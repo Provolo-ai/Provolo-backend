@@ -3,10 +3,21 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"provolo-api/internal/types"
 	"strings"
 )
+
+// Custom error type for unauthorized content
+type UnauthorizedContentError struct {
+	Message string
+	Code    string
+}
+
+func (e *UnauthorizedContentError) Error() string {
+	return e.Message
+}
 
 // validatePortfolioResponse validates that required fields are present
 func validatePortfolioResponse(response *types.OptimizerResponse) error {
@@ -80,7 +91,7 @@ func cleanGeminiResponse(text string) string {
 	return strings.TrimSpace(jsonContent)
 }
 
-// ParseGeminiJSONBlock parses the Gemini response, extracts JSON for structured fields, and stores full text
+// ParseGeminiJSONBlock parses the Gemini response and handles both success and error formats
 func ParseGeminiJSONBlock(text string) (*types.OptimizerResponse, error) {
 	if text == "" {
 		return nil, errors.New("empty response text")
@@ -97,10 +108,31 @@ func ParseGeminiJSONBlock(text string) (*types.OptimizerResponse, error) {
 
 	var jsonData map[string]interface{}
 	if err := json.Unmarshal([]byte(cleaned), &jsonData); err != nil {
-		return nil, errors.New("failed to parse JSON from response: " + err.Error())
+		return nil, fmt.Errorf("failed to parse JSON from response: %v", err)
 	}
 
-	// Extract fields from JSON, with type checking
+	// Check if this is an error response
+	if errorFlag, exists := jsonData["error"]; exists {
+		if isError, ok := errorFlag.(bool); ok && isError {
+			// This is an error response from Gemini
+			message := "Content not authorized for processing"
+			code := "UNAUTHORIZED_CONTENT"
+
+			if msg, ok := jsonData["message"].(string); ok && msg != "" {
+				message = msg
+			}
+			if c, ok := jsonData["code"].(string); ok && c != "" {
+				code = c
+			}
+
+			return nil, &UnauthorizedContentError{
+				Message: message,
+				Code:    code,
+			}
+		}
+	}
+
+	// Extract fields from JSON for success response
 	getStringField := func(key string) string {
 		if val, ok := jsonData[key]; ok {
 			if str, ok := val.(string); ok {
@@ -122,7 +154,7 @@ func ParseGeminiJSONBlock(text string) (*types.OptimizerResponse, error) {
 
 	// Validate required fields
 	if err := validatePortfolioResponse(response); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("validation failed: %v", err)
 	}
 
 	return response, nil
