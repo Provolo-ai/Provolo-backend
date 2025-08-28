@@ -66,6 +66,45 @@ definitions:
       title:
         type: string
     type: object
+  types.Feature:
+    properties:
+      description:
+        type: string
+      limited:
+        type: boolean
+      maxQuota:
+        type: integer
+      name:
+        type: string
+      recurringInterval:
+        $ref: '#/definitions/types.RecurringInterval'
+      slug:
+        $ref: '#/definitions/types.FeatureSlug'
+    type: object
+  types.FeatureSlug:
+    enum:
+    - profile_optimizer
+    - ai_proposal_credit
+    - ai_proposals_unlimited
+    - linkedin_profile_optimizer
+    - priority_support
+    - resume_generator
+    - advanced_ai_insights
+    - early_access_features
+    - direct_support_chat
+    - standard_support
+    type: string
+    x-enum-varnames:
+    - FeatureProfileOptimizer
+    - FeatureAIProposalCredit
+    - FeatureAIProposalsUnlimited
+    - FeatureLinkedInOptimizer
+    - FeaturePrioritySupport
+    - FeatureResumeGenerator
+    - FeatureAdvancedAIInsights
+    - FeatureEarlyAccess
+    - FeatureDirectSupportChat
+    - FeatureStandardSupport
   types.OptimizerResponse:
     properties:
       beforeAfterComparison:
@@ -93,6 +132,45 @@ definitions:
     - recommendedVisuals
     - suggestedProjectTitles
     - weaknessesAndOptimization
+    type: object
+  types.PlanRecurringInterval:
+    enum:
+    - monthly
+    type: string
+    x-enum-varnames:
+    - PlanMonthly
+  types.RecurringInterval:
+    enum:
+    - dail
+    - weekly
+    - monthly
+    type: string
+    x-enum-varnames:
+    - Daily
+    - Weekly
+    - Monthly
+  types.Tier:
+    properties:
+      createdAt:
+        type: string
+      description:
+        type: string
+      features:
+        items:
+          $ref: '#/definitions/types.Feature'
+        type: array
+      name:
+        type: string
+      polarRefId:
+        type: string
+      price:
+        type: integer
+      recurringInterval:
+        $ref: '#/definitions/types.PlanRecurringInterval'
+      slug:
+        type: string
+      updatedAt:
+        type: string
     type: object
 host: provolo-backend.onrender.com
 info:
@@ -254,6 +332,62 @@ paths:
           schema:
             $ref: '#/definitions/types.APIResponse'
       summary: Handle payment webhook
+      tags:
+      - payments
+  /api/v1/payment/tiers:
+    get:
+      description: Retrieves all available payment tiers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Payment tiers retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/types.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/types.Tier'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error - Failed to retrieve payment tiers
+          schema:
+            $ref: '#/definitions/types.APIResponse'
+      summary: Get payment tiers
+      tags:
+      - payments
+  /api/v1/payment/tiers/{slug}:
+    get:
+      description: Retrieves a specific payment tier using its slug
+      parameters:
+      - description: Tier slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Payment tier retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/types.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/types.Tier'
+              type: object
+        "404":
+          description: Tier not found
+          schema:
+            $ref: '#/definitions/types.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/types.APIResponse'
+      summary: Get payment tier by slug
       tags:
       - payments
   /api/v1/protected/profile:

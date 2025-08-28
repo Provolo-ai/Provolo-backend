@@ -253,6 +253,100 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/payment/tiers": {
+            "get": {
+                "description": "Retrieves all available payment tiers",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payments"
+                ],
+                "summary": "Get payment tiers",
+                "responses": {
+                    "200": {
+                        "description": "Payment tiers retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/types.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/types.Tier"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error - Failed to retrieve payment tiers",
+                        "schema": {
+                            "$ref": "#/definitions/types.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/payment/tiers/{slug}": {
+            "get": {
+                "description": "Retrieves a specific payment tier using its slug",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payments"
+                ],
+                "summary": "Get payment tier by slug",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tier slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Payment tier retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/types.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/types.Tier"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Tier not found",
+                        "schema": {
+                            "$ref": "#/definitions/types.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/types.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/protected/profile": {
             "get": {
                 "description": "Retrieves the authenticated user's profile information",
@@ -373,6 +467,56 @@ const docTemplate = `{
                 }
             }
         },
+        "types.Feature": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "limited": {
+                    "type": "boolean"
+                },
+                "maxQuota": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "recurringInterval": {
+                    "$ref": "#/definitions/types.RecurringInterval"
+                },
+                "slug": {
+                    "$ref": "#/definitions/types.FeatureSlug"
+                }
+            }
+        },
+        "types.FeatureSlug": {
+            "type": "string",
+            "enum": [
+                "profile_optimizer",
+                "ai_proposal_credit",
+                "ai_proposals_unlimited",
+                "linkedin_profile_optimizer",
+                "priority_support",
+                "resume_generator",
+                "advanced_ai_insights",
+                "early_access_features",
+                "direct_support_chat",
+                "standard_support"
+            ],
+            "x-enum-varnames": [
+                "FeatureProfileOptimizer",
+                "FeatureAIProposalCredit",
+                "FeatureAIProposalsUnlimited",
+                "FeatureLinkedInOptimizer",
+                "FeaturePrioritySupport",
+                "FeatureResumeGenerator",
+                "FeatureAdvancedAIInsights",
+                "FeatureEarlyAccess",
+                "FeatureDirectSupportChat",
+                "FeatureStandardSupport"
+            ]
+        },
         "types.OptimizerResponse": {
             "type": "object",
             "required": [
@@ -407,6 +551,63 @@ const docTemplate = `{
                 "weaknessesAndOptimization": {
                     "type": "string",
                     "minLength": 1
+                }
+            }
+        },
+        "types.PlanRecurringInterval": {
+            "type": "string",
+            "enum": [
+                "monthly"
+            ],
+            "x-enum-varnames": [
+                "PlanMonthly"
+            ]
+        },
+        "types.RecurringInterval": {
+            "type": "string",
+            "enum": [
+                "dail",
+                "weekly",
+                "monthly"
+            ],
+            "x-enum-varnames": [
+                "Daily",
+                "Weekly",
+                "Monthly"
+            ]
+        },
+        "types.Tier": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "features": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.Feature"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "polarRefId": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "integer"
+                },
+                "recurringInterval": {
+                    "$ref": "#/definitions/types.PlanRecurringInterval"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         }

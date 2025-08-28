@@ -66,8 +66,11 @@ func SetupRoutes(config *types.Config) http.Handler {
 		// Profile Optimization with rate limiting for expensive operations
 		v1.Use(middleware.AuthMiddleware(authHandler.GetClient())).Use(middleware.StrictRateLimiter()).POST("/optimize-profile", handlers.ProfileOptimizer)
 
-		// Payments Webhook
-		v1.POST("/payment-webhook", handlers.PaymentWebhook)
+		// Payments
+		payment := v1.Group("/payment")
+		payment.GET("/tiers", handlers.GetPaymentTiers)
+		payment.GET("/tiers/:slug", handlers.GetPaymentTierBySlug)
+		payment.POST("/webhook", handlers.PaymentWebhook)
 	}
 
 	// Swagger documentation with dynamic URL

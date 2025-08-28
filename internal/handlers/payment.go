@@ -1,10 +1,14 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"provolo-api/internal/types"
+	"provolo-api/internal/utils"
+	"sort"
 
 	"github.com/gin-gonic/gin"
+	"google.golang.org/api/iterator"
 )
 
 // PaymentWebhookSample represents a sample structure for payment webhook (for documentation only)
@@ -18,6 +22,176 @@ type PaymentWebhookSample struct {
 	Timestamp     string                 `json:"timestamp" example:"2024-01-15T10:30:00Z"`
 	PaymentMethod string                 `json:"payment_method" example:"credit_card"`
 	Metadata      map[string]interface{} `json:"metadata"`
+}
+
+// GetPaymentTiers retrieves the available payment tiers
+// @Summary Get payment tiers
+// @Description Retrieves all available payment tiers
+// @Tags payments
+// @Produce json
+// @Success 200 {object} types.APIResponse{data=[]types.Tier} "Payment tiers retrieved successfully"
+// @Failure 500 {object} types.APIResponse "Internal Server Error - Failed to retrieve payment tiers"
+// @Router /api/v1/payment/tiers [get]
+func GetPaymentTiers(c *gin.Context) {
+	ctx := context.Background()
+
+	// Get Firebase app instance
+	app, err := utils.GetFirebaseApp(ctx)
+	if err != nil {
+		errorResponse := types.NewErrorResponse(
+			"Firebase Error",
+			"Failed to initialize Firebase: "+err.Error(),
+		)
+		c.JSON(http.StatusInternalServerError, errorResponse)
+		return
+	}
+
+	// Get Firestore client
+	client, err := app.Firestore(ctx)
+	if err != nil {
+		errorResponse := types.NewErrorResponse(
+			"Firestore Error",
+			"Failed to get Firestore client: "+err.Error(),
+		)
+		c.JSON(http.StatusInternalServerError, errorResponse)
+		return
+	}
+	defer client.Close()
+
+	// Query all tiers from the "tiers" collection
+	iter := client.Collection("tiers").Documents(ctx)
+	defer iter.Stop()
+
+	var tiers []types.Tier
+
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			errorResponse := types.NewErrorResponse(
+				"Firestore Query Error",
+				"Failed to fetch tiers: "+err.Error(),
+			)
+			c.JSON(http.StatusInternalServerError, errorResponse)
+			return
+		}
+
+		var tier types.Tier
+		if err := doc.DataTo(&tier); err != nil {
+			errorResponse := types.NewErrorResponse(
+				"Data Mapping Error",
+				"Failed to map tier data: "+err.Error(),
+			)
+			c.JSON(http.StatusInternalServerError, errorResponse)
+			return
+		}
+
+		tiers = append(tiers, tier)
+	}
+
+	// Sort tiers by price (ascending: Starter, Pro, Guru)
+	sort.Slice(tiers, func(i, j int) bool {
+		return tiers[i].Price < tiers[j].Price
+	})
+
+	// Return success response with tiers
+	response := types.NewSuccessResponse(
+		"Payment Tiers",
+		"Payment tiers retrieved successfully",
+		tiers,
+	)
+
+	c.JSON(http.StatusOK, response)
+}
+
+// GetPaymentTierBySlug retrieves a specific payment tier by slug
+// @Summary Get payment tier by slug
+// @Description Retrieves a specific payment tier using its slug
+// @Tags payments
+// @Produce json
+// @Param slug path string true "Tier slug"
+// @Success 200 {object} types.APIResponse{data=types.Tier} "Payment tier retrieved successfully"
+// @Failure 404 {object} types.APIResponse "Tier not found"
+// @Failure 500 {object} types.APIResponse "Internal Server Error"
+// @Router /api/v1/payment/tiers/{slug} [get]
+func GetPaymentTierBySlug(c *gin.Context) {
+	ctx := context.Background()
+	slug := c.Param("slug")
+
+	if slug == "" {
+		errorResponse := types.NewErrorResponse(
+			"Invalid Request",
+			"Tier slug is required",
+		)
+		c.JSON(http.StatusBadRequest, errorResponse)
+		return
+	}
+
+	// Get Firebase app instance
+	app, err := utils.GetFirebaseApp(ctx)
+	if err != nil {
+		errorResponse := types.NewErrorResponse(
+			"Firebase Error",
+			"Failed to initialize Firebase: "+err.Error(),
+		)
+		c.JSON(http.StatusInternalServerError, errorResponse)
+		return
+	}
+
+	// Get Firestore client
+	client, err := app.Firestore(ctx)
+	if err != nil {
+		errorResponse := types.NewErrorResponse(
+			"Firestore Error",
+			"Failed to get Firestore client: "+err.Error(),
+		)
+		c.JSON(http.StatusInternalServerError, errorResponse)
+		return
+	}
+	defer client.Close()
+
+	// Query tier by slug
+	iter := client.Collection("tiers").Where("slug", "==", slug).Limit(1).Documents(ctx)
+	defer iter.Stop()
+
+	doc, err := iter.Next()
+	if err == iterator.Done {
+		errorResponse := types.NewErrorResponse(
+			"Tier Not Found",
+			"No tier found with slug: "+slug,
+		)
+		c.JSON(http.StatusNotFound, errorResponse)
+		return
+	}
+	if err != nil {
+		errorResponse := types.NewErrorResponse(
+			"Firestore Query Error",
+			"Failed to fetch tier: "+err.Error(),
+		)
+		c.JSON(http.StatusInternalServerError, errorResponse)
+		return
+	}
+
+	var tier types.Tier
+	if err := doc.DataTo(&tier); err != nil {
+		errorResponse := types.NewErrorResponse(
+			"Data Mapping Error",
+			"Failed to map tier data: "+err.Error(),
+		)
+		c.JSON(http.StatusInternalServerError, errorResponse)
+		return
+	}
+
+	// Return success response with tier
+	response := types.NewSuccessResponse(
+		"Payment Tier",
+		"Payment tier retrieved successfully",
+		tier,
+	)
+
+	c.JSON(http.StatusOK, response)
 }
 
 // PaymentWebhook handles payment webhook requests

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"provolo-api/internal/env"
+	"provolo-api/internal/types"
 	"provolo-api/internal/utils"
 	"time"
 
@@ -14,85 +15,36 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 )
 
-// ENUM DEFINITIONS
-type RecurringInterval string
-type PlanRecurringInterval string
-type FeatureSlug string
-
-// Enums
-const (
-	// Feature quota recurrence
-	Daily   RecurringInterval = "daily"
-	Weekly  RecurringInterval = "weekly"
-	Monthly RecurringInterval = "monthly"
-
-	// Plan recurrence
-	PlanMonthly PlanRecurringInterval = "monthly"
-
-	// Feature slugs
-	FeatureProfileOptimizer     FeatureSlug = "profile_optimizer"
-	FeatureAIProposalCredit     FeatureSlug = "ai_proposal_credit"
-	FeatureAIProposalsUnlimited FeatureSlug = "ai_proposals_unlimited"
-	FeatureLinkedInOptimizer    FeatureSlug = "linkedin_profile_optimizer"
-	FeaturePrioritySupport      FeatureSlug = "priority_support"
-	FeatureResumeGenerator      FeatureSlug = "resume_generator"
-	FeatureAdvancedAIInsights   FeatureSlug = "advanced_ai_insights"
-	FeatureEarlyAccess          FeatureSlug = "early_access_features"
-	FeatureDirectSupportChat    FeatureSlug = "direct_support_chat"
-	FeatureStandardSupport      FeatureSlug = "standard_support"
-)
-
-// Feature type def
-type Feature struct {
-	Name              string            `firestore:"name" json:"name"`
-	Description       string            `firestore:"description" json:"description"`
-	Slug              FeatureSlug       `firestore:"slug" json:"slug"`
-	Limited           bool              `firestore:"limited" json:"limited"`
-	MaxQuota          int               `firestore:"maxQuota" json:"maxQuota"`
-	RecurringInterval RecurringInterval `firestore:"recurringInterval" json:"recurringInterval"`
-}
-
-// Tier type def
-type Tier struct {
-	Name              string                `firestore:"name" json:"name"`
-	Slug              string                `firestore:"slug" json:"slug"`
-	Price             int                   `firestore:"price" json:"price"` // price in cents
-	Description       string                `firestore:"description" json:"description"`
-	RecurringInterval PlanRecurringInterval `firestore:"recurringInterval" json:"recurringInterval"`
-	Features          []Feature             `firestore:"features" json:"features"`
-	CreatedAt         time.Time             `firestore:"createdAt" json:"createdAt"`
-	UpdatedAt         time.Time             `firestore:"updatedAt" json:"updatedAt"`
-}
-
 // PREDEFINED TIERS
-var tiers = []Tier{
+var tiers = []types.Tier{
 	{
 		Name:              "Starter (Freemium)",
 		Slug:              "starter",
 		Description:       "Perfect for new freelancers and those exploring the platform.",
-		RecurringInterval: PlanMonthly,
+		RecurringInterval: types.PlanMonthly,
 		Price:             0,
-		Features: []Feature{
+		PolarRefId:        "d1173db4-8051-47a6-a3de-ba6296b2fb17",
+		Features: []types.Feature{
 			{
 				Name:              "Profile Optimizer",
 				Description:       "Full access to the Profile Optimizer feature.",
-				Slug:              FeatureProfileOptimizer,
+				Slug:              types.FeatureProfileOptimizer,
 				Limited:           true,
-				RecurringInterval: Daily,
+				RecurringInterval: types.Daily,
 				MaxQuota:          2,
 			},
 			{
 				Name:              "AI Proposal Credit",
 				Description:       "1 AI Proposal credit per month.",
-				Slug:              FeatureAIProposalCredit,
+				Slug:              types.FeatureAIProposalsUnlimited,
 				Limited:           true,
 				MaxQuota:          1,
-				RecurringInterval: Monthly,
+				RecurringInterval: types.Monthly,
 			},
 			{
 				Name:        "Standard Support",
 				Description: "Support via Twitter.",
-				Slug:        FeatureStandardSupport,
+				Slug:        types.FeatureAIProposalsUnlimited,
 				Limited:     false,
 			},
 		},
@@ -103,33 +55,34 @@ var tiers = []Tier{
 		Name:              "Pro",
 		Slug:              "pro",
 		Description:       "For freelancers actively applying for jobs and serious about getting clients.",
-		RecurringInterval: PlanMonthly,
+		RecurringInterval: types.PlanMonthly,
 		Price:             1999, // $19.99
-		Features: []Feature{
+		PolarRefId:        "503fe6a4-b148-41bb-b779-60334594794e",
+		Features: []types.Feature{
 			{
 				Name:              "Profile Optimizer",
 				Description:       "Full access to the Profile Optimizer feature.",
-				Slug:              FeatureProfileOptimizer,
+				Slug:              types.FeatureProfileOptimizer,
 				Limited:           true,
 				MaxQuota:          5,
-				RecurringInterval: Daily,
+				RecurringInterval: types.Daily,
 			},
 			{
 				Name:        "AI Proposals",
 				Description: "Unlimited AI Proposals per month.",
-				Slug:        FeatureAIProposalsUnlimited,
+				Slug:        types.FeatureAIProposalsUnlimited,
 				Limited:     false,
 			},
 			{
 				Name:        "LinkedIn Profile Optimizer",
 				Description: "Access to the upcoming LinkedIn Profile Optimizer feature.",
-				Slug:        FeatureLinkedInOptimizer,
+				Slug:        types.FeatureLinkedInOptimizer,
 				Limited:     false,
 			},
 			{
 				Name:        "Priority Support",
 				Description: "Get faster support response times.",
-				Slug:        FeaturePrioritySupport,
+				Slug:        types.FeaturePrioritySupport,
 				Limited:     false,
 			},
 		},
@@ -140,55 +93,56 @@ var tiers = []Tier{
 		Name:              "Guru",
 		Slug:              "guru",
 		Description:       "For established freelancers scaling their business across multiple platforms.",
-		RecurringInterval: PlanMonthly,
+		RecurringInterval: types.PlanMonthly,
 		Price:             4999, // $49.99
-		Features: []Feature{
+		PolarRefId:        "070d64d8-764f-4fbf-aacd-ea895d90ea48",
+		Features: []types.Feature{
 			{
 				Name:        "Profile Optimizer",
 				Description: "Full access to the Profile Optimizer feature.",
-				Slug:        FeatureProfileOptimizer,
+				Slug:        types.FeatureProfileOptimizer,
 				Limited:     false,
 			},
 			{
 				Name:        "AI Proposals",
 				Description: "Unlimited AI Proposals per month.",
-				Slug:        FeatureAIProposalsUnlimited,
+				Slug:        types.FeatureAIProposalsUnlimited,
 				Limited:     false,
 			},
 			{
 				Name:        "LinkedIn Profile Optimizer",
 				Description: "Access to the upcoming LinkedIn Profile Optimizer feature.",
-				Slug:        FeatureLinkedInOptimizer,
+				Slug:        types.FeatureLinkedInOptimizer,
 				Limited:     false,
 			},
 			{
 				Name:        "Priority Support",
 				Description: "Get faster support response times.",
-				Slug:        FeaturePrioritySupport,
+				Slug:        types.FeaturePrioritySupport,
 				Limited:     false,
 			},
 			{
 				Name:        "Resume Generator",
 				Description: "Generate professional resumes automatically.",
-				Slug:        FeatureResumeGenerator,
+				Slug:        types.FeatureResumeGenerator,
 				Limited:     false,
 			},
 			{
 				Name:        "Advanced AI Insights",
 				Description: "A/B testing proposals and tracking proposal performance.",
-				Slug:        FeatureAdvancedAIInsights,
+				Slug:        types.FeatureAdvancedAIInsights,
 				Limited:     false,
 			},
 			{
 				Name:        "Early Access",
 				Description: "Be the first to access upcoming features.",
-				Slug:        FeatureEarlyAccess,
+				Slug:        types.FeatureEarlyAccess,
 				Limited:     false,
 			},
 			{
 				Name:        "Direct Support Chat",
 				Description: "Get direct access to support chat.",
-				Slug:        FeatureDirectSupportChat,
+				Slug:        types.FeatureDirectSupportChat,
 				Limited:     false,
 			},
 		},
@@ -197,7 +151,7 @@ var tiers = []Tier{
 	},
 }
 
-func validateFeatures(features []Feature) error {
+func validateFeatures(features []types.Feature) error {
 	for _, f := range features {
 		if f.Limited {
 			if f.MaxQuota <= 0 {
