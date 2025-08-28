@@ -48,7 +48,7 @@ func PaymentWebhook(c *gin.Context) {
 	response := types.NewSuccessResponse(
 		"Payment Webhook",
 		"Webhook received and processed successfully - any data structure accepted",
-		webhookData, // Return whatever data was sent
+		webhookData,
 	)
 
 	c.JSON(http.StatusOK, response)
