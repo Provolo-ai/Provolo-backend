@@ -10,7 +10,7 @@ type FeatureSlug string
 // Enums
 const (
 	// Feature quota recurrence
-	Daily   RecurringInterval = "dail"
+	Daily   RecurringInterval = "daily"
 	Weekly  RecurringInterval = "weekly"
 	Monthly RecurringInterval = "monthly"
 

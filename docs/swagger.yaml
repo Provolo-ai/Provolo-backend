@@ -141,7 +141,7 @@ definitions:
     - PlanMonthly
   types.RecurringInterval:
     enum:
-    - dail
+    - daily
     - weekly
     - monthly
     type: string

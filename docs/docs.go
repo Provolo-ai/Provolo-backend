@@ -566,7 +566,7 @@ const docTemplate = `{
         "types.RecurringInterval": {
             "type": "string",
             "enum": [
-                "dail",
+                "daily",
                 "weekly",
                 "monthly"
             ],
