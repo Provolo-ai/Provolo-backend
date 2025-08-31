@@ -44,7 +44,7 @@ var tiers = []types.Tier{
 			{
 				Name:        "Standard Support",
 				Description: "Support via Twitter.",
-				Slug:        types.FeatureAIProposalsUnlimited,
+				Slug:        types.FeatureStandardSupport,
 				Limited:     false,
 			},
 		},
@@ -208,8 +208,8 @@ func main() {
 	for _, tier := range tiers {
 		// Validate features
 		if err := validateFeatures(tier.Features); err != nil {
-			fmt.Printf("❌ Validation failed for tier %s: %v\n", tier.Slug, err)
-			continue // skip this tier instead of writing invalid data
+			fmt.Printf("Validation failed for tier %s: %v\n", tier.Slug, err)
+			continue
 		}
 
 		// Ensure updated timestamps

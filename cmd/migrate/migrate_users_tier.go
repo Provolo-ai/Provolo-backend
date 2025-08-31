@@ -15,7 +15,7 @@ import (
 	"google.golang.org/api/option"
 )
 
-func main() {
+func migrateUsersTier() {
 	fmt.Println("Starting user tiers migration...")
 
 	// Load env config
