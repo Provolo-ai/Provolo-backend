@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"log"
 	"provolo-api/internal/types"
+	"regexp"
 	"strings"
+
+	"github.com/go-playground/validator/v10"
 )
 
 // Custom error type for unauthorized content
@@ -19,102 +22,28 @@ func (e *UnauthorizedContentError) Error() string {
 	return e.Message
 }
 
-// validatePortfolioResponse validates that required fields are present
-func validatePortfolioResponse(response *types.OptimizerResponse) error {
-	if response.FullAnalysis == "" {
-		return errors.New("fullAnalysis is required")
-	}
-	if response.WeaknessesAndOptimization == "" {
-		return errors.New("weaknessesAndOptimization is required")
-	}
-	if response.OptimizedProfileOverview == "" {
-		return errors.New("optimized profile overview is required")
-	}
-	if response.SuggestedProjectTitles == "" {
-		return errors.New("suggestedProjectTitles is required")
-	}
-	if response.RecommendedVisuals == "" {
-		return errors.New("recommendedVisuals is required")
-	}
-	if response.BeforeAfterComparison == "" {
-		return errors.New("beforeAfterComparison is required")
-	}
-	return nil
-}
-
-func cleanGeminiResponse(text string) string {
-	// Find the JSON block within code fences
-	jsonStart := strings.Index(text, "```json")
-	if jsonStart == -1 {
-		// Try without the language specifier
-		jsonStart = strings.Index(text, "```")
-		if jsonStart == -1 {
-			return strings.TrimSpace(text)
-		}
-	}
-
-	// Find the start of actual JSON content
-	startPos := strings.Index(text[jsonStart:], "\n")
-	if startPos == -1 {
-		startPos = strings.Index(text[jsonStart:], "{")
-	} else {
-		startPos = jsonStart + startPos + 1
-		// Find the opening brace
-		bracePos := strings.Index(text[startPos:], "{")
-		if bracePos != -1 {
-			startPos = startPos + bracePos
-		}
-	}
-
-	// Find the closing code fence
-	endPos := strings.Index(text[startPos:], "```")
-	if endPos == -1 {
-		// If no closing fence, find the last closing brace
-		lastBrace := strings.LastIndex(text, "}")
-		if lastBrace != -1 {
-			return strings.TrimSpace(text[startPos : lastBrace+1])
-		}
-		return strings.TrimSpace(text[startPos:])
-	}
-
-	// Extract JSON content between braces
-	jsonContent := text[startPos : startPos+endPos]
-
-	// Find the actual JSON object boundaries
-	firstBrace := strings.Index(jsonContent, "{")
-	lastBrace := strings.LastIndex(jsonContent, "}")
-
-	if firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace {
-		return strings.TrimSpace(jsonContent[firstBrace : lastBrace+1])
-	}
-
-	return strings.TrimSpace(jsonContent)
-}
-
 // ParseGeminiJSONBlock parses the Gemini response and handles both success and error formats
 func ParseGeminiJSONBlock(text string) (*types.OptimizerResponse, error) {
 	if text == "" {
 		return nil, errors.New("empty response text")
 	}
 
-	// Store the full response text
+	// Store the full response text for debugging and fallback
 	fullAnalysis := text
 
 	// Try to extract and parse JSON block
 	cleaned := cleanGeminiResponse(text)
 
-	// Debug log the cleaned JSON
-	log.Printf("Cleaned JSON for parsing: %s", cleaned[:min(200, len(cleaned))])
-
 	var jsonData map[string]interface{}
 	if err := json.Unmarshal([]byte(cleaned), &jsonData); err != nil {
+		// Log the full cleaned JSON to diagnose the issue
+		log.Printf("Full cleaned JSON causing error: %s", cleaned)
 		return nil, fmt.Errorf("failed to parse JSON from response: %v", err)
 	}
 
 	// Check if this is an error response
 	if errorFlag, exists := jsonData["error"]; exists {
 		if isError, ok := errorFlag.(bool); ok && isError {
-			// This is an error response from Gemini
 			message := "Content not authorized for processing"
 			code := "UNAUTHORIZED_CONTENT"
 
@@ -144,7 +73,7 @@ func ParseGeminiJSONBlock(text string) (*types.OptimizerResponse, error) {
 
 	// Create response with both full analysis and parsed JSON fields
 	response := &types.OptimizerResponse{
-		FullAnalysis:              fullAnalysis, // Complete raw response
+		FullAnalysis:              fullAnalysis,
 		WeaknessesAndOptimization: getStringField("weaknessesAndOptimization"),
 		OptimizedProfileOverview:  getStringField("optimizedProfileOverview"),
 		SuggestedProjectTitles:    getStringField("suggestedProjectTitles"),
@@ -160,10 +89,71 @@ func ParseGeminiJSONBlock(text string) (*types.OptimizerResponse, error) {
 	return response, nil
 }
 
-// Helper function for min
-func min(a, b int) int {
-	if a < b {
-		return a
+// cleanGeminiResponse extracts and sanitizes the JSON block from the response
+func cleanGeminiResponse(text string) string {
+	// Step 1: Try to extract JSON block between ```json and ```
+	re := regexp.MustCompile("(?s)```json\n(.*?)\n```")
+	matches := re.FindStringSubmatch(text)
+	jsonBlock := text
+	if len(matches) >= 2 {
+		jsonBlock = matches[1]
+	} else {
+		log.Printf("No JSON block found in response, attempting to parse as-is")
 	}
-	return b
+
+	// Step 2: Check if the text looks like JSON (starts with { and ends with })
+	jsonBlock = strings.TrimSpace(jsonBlock)
+	if !strings.HasPrefix(jsonBlock, "{") || !strings.HasSuffix(jsonBlock, "}") {
+		log.Printf("Response is not valid JSON, returning sanitized text")
+		// Escape the entire text as a single JSON string for safety
+		return fmt.Sprintf("{\"raw_response\":%q}", jsonBlock)
+	}
+
+	// Step 3: Pre-process the JSON to fix common escape sequence issues
+	// First, temporarily replace valid escape sequences to protect them
+	jsonBlock = strings.ReplaceAll(jsonBlock, "\\\"", "__QUOTE__")
+	jsonBlock = strings.ReplaceAll(jsonBlock, "\\n", "__NEWLINE__")
+	jsonBlock = strings.ReplaceAll(jsonBlock, "\\r", "__RETURN__")
+	jsonBlock = strings.ReplaceAll(jsonBlock, "\\t", "__TAB__")
+
+	// Fix invalid escape sequences (like \' which is not valid in JSON)
+	jsonBlock = strings.ReplaceAll(jsonBlock, "\\\\'", "'")
+
+	// Now sanitize string values
+	reString := regexp.MustCompile(`"(.*?)"`)
+	cleaned := reString.ReplaceAllStringFunc(jsonBlock, func(s string) string {
+		// Extract content between quotes
+		content := s[1 : len(s)-1]
+
+		// Escape special characters that aren't already escaped
+		content = strings.ReplaceAll(content, "\"", "\\\"")
+		content = strings.ReplaceAll(content, "\n", "\\n")
+		content = strings.ReplaceAll(content, "\r", "\\r")
+		content = strings.ReplaceAll(content, "\t", "\\t")
+
+		// Restore protected sequences
+		content = strings.ReplaceAll(content, "__QUOTE__", "\\\"")
+		content = strings.ReplaceAll(content, "__NEWLINE__", "\\n")
+		content = strings.ReplaceAll(content, "__RETURN__", "\\r")
+		content = strings.ReplaceAll(content, "__TAB__", "\\t")
+
+		return fmt.Sprintf("\"%s\"", content)
+	})
+
+	// Step 4: Validate that the result is valid JSON
+	if !json.Valid([]byte(cleaned)) {
+		log.Printf("Sanitized JSON is still invalid, falling back to raw response")
+		return fmt.Sprintf("{\"raw_response\":%q}", jsonBlock)
+	}
+
+	return cleaned
+}
+
+// validatePortfolioResponse checks if required fields are present using validator
+func validatePortfolioResponse(resp *types.OptimizerResponse) error {
+	validate := validator.New()
+	if err := validate.Struct(resp); err != nil {
+		return fmt.Errorf("validation failed: %v", err)
+	}
+	return nil
 }
