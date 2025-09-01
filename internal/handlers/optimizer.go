@@ -53,7 +53,7 @@ func ProfileOptimizer(c *gin.Context) {
 		return
 	}
 
-	// Check rate limit before processing
+	// Check quota before processing
 	ctx := context.Background()
 	firebaseApp, err := utils.GetFirebaseApp(ctx)
 	if err != nil {
@@ -65,22 +65,41 @@ func ProfileOptimizer(c *gin.Context) {
 		return
 	}
 
-	// Get current limit from environment
-	dailyLimit := env.GetEnvInt("MAX_PROMPT_LIMIT", 2)
-	limitResult, err := utils.CheckUserPromptLimit(ctx, firebaseApp, userIDStr, dailyLimit)
+	// Check user quota for profile optimizer feature
+	quotaResult, err := utils.CheckUserQuota(ctx, firebaseApp, userIDStr, types.FeatureProfileOptimizer)
 	if err != nil {
-		log.Printf("Error checking rate limit: %v", err)
+		log.Printf("Error checking quota: %v", err)
+
+		// Check if it's a user not found error
+		if strings.Contains(err.Error(), "user not found in users collection") {
+			c.JSON(http.StatusNotFound, types.NewErrorResponse(
+				"User Not Found",
+				"User account not found. Please ensure you are properly registered.",
+			))
+			return
+		}
+
+		// Check if it's a tier validation error
+		if strings.Contains(err.Error(), "tier validation failed") {
+			c.JSON(http.StatusBadRequest, types.NewErrorResponse(
+				"Invalid Subscription",
+				"Your subscription tier is invalid. Please contact support.",
+			))
+			return
+		}
+
+		// Default to internal server error for other cases
 		c.JSON(http.StatusInternalServerError, types.NewErrorResponse(
 			"Internal Server Error",
-			"Failed to check rate limit",
+			"Failed to check quota",
 		))
 		return
 	}
 
-	if !limitResult.Allowed {
+	if !quotaResult.Allowed {
 		c.JSON(http.StatusTooManyRequests, types.NewErrorResponse(
-			"Rate Limit Exceeded",
-			fmt.Sprintf("Daily limit of %d prompts exceeded. Current count: %d. Try again tomorrow.", limitResult.Limit, limitResult.Count),
+			"Quota Exceeded",
+			fmt.Sprintf("Quota limit exceeded for profile optimizer. Current usage: %d/%d. Try again in the next period.", quotaResult.Count, quotaResult.Limit),
 		))
 		return
 	}
@@ -188,10 +207,10 @@ func ProfileOptimizer(c *gin.Context) {
 		return
 	}
 
-	// Update the count after successful processing but before sending response
-	if err := utils.UpdateUserPromptLimit(ctx, firebaseApp, userIDStr); err != nil {
+	// Update the quota after successful processing but before sending response
+	if err := utils.UpdateUserQuota(ctx, firebaseApp, userIDStr, types.FeatureProfileOptimizer); err != nil {
 		// Log the error but don't fail the request since we already got the response
-		log.Printf("Warning: Failed to update prompt count for user %s: %v", userIDStr, err)
+		log.Printf("Warning: Failed to update quota for user %s: %v", userIDStr, err)
 	}
 
 	// Return success response using NewSuccessResponse
