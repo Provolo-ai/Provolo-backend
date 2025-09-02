@@ -18,7 +18,7 @@ func SetupRoutes(config *types.Config) http.Handler {
 	g := gin.Default()
 
 	// Global rate limiter - apply to all routes
-	g.Use(middleware.GlobalRateLimiter())
+	// g.Use(middleware.GlobalRateLimiter())
 
 	// Environment-specific CORS
 	if config.Environment == "production" {
@@ -48,11 +48,10 @@ func SetupRoutes(config *types.Config) http.Handler {
 
 		// Auth routes - wiith strict rate limiting to prevent brute force
 		auth := v1.Group("/auth")
-		auth.Use(middleware.StrictRateLimiter())
 		{
-			auth.POST("/login", authHandler.Login)
 			auth.GET("/verify", authHandler.VerifySession)
-			auth.POST("/logout", authHandler.Logout)
+			auth.POST("logout", authHandler.Logout)
+			auth.Use(middleware.StrictRateLimiter()).POST("login", authHandler.Login)
 		}
 
 		// Payments
