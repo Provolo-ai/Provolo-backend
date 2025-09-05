@@ -143,15 +143,16 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	// Set HTTP-only cookie
-	c.SetCookie(
-		"session",
-		cookie,
-		int(expiresIn.Seconds()),
-		"/",
-		"",
-		false,
-		true,
-	)
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "session",
+		Value:    cookie,
+		MaxAge:   int(expiresIn.Seconds()),
+		Path:     "/",
+		Domain:   "",
+		SameSite: http.SameSiteLaxMode,
+		Secure:   false,
+		HttpOnly: true,
+	})
 
 	// Get user info
 	userRecord, err := h.client.GetUser(ctx, token.UID)
