@@ -143,31 +143,13 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	// Set HTTP-only cookie
-	domain := ""
-	secure := false
-	host := c.Request.Host
-	if env.GetEnvString("ENVIRONMENT", "development") == "production" {
-		// Set cookie domain for allowed production domains
-		switch host {
-		case "www.provolo.org":
-			domain = ".provolo.org"
-		case "provolo-front-end-dev-env.vercel.app":
-			domain = ".vercel.app"
-		default:
-			domain = ""
-		}
-		secure = true
-	} else if host == "localhost:5173" {
-		domain = "localhost"
-		secure = false
-	}
 	c.SetCookie(
 		"session",
 		cookie,
 		int(expiresIn.Seconds()),
 		"/",
-		domain,
-		secure,
+		"",
+		false,
 		true,
 	)
 
