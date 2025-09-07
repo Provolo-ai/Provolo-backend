@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"provolo-api/internal/types"
 	"provolo-api/internal/utils"
@@ -203,7 +204,7 @@ func GetPaymentTierBySlug(c *gin.Context) {
 // @Param request body PaymentWebhookSample true "Sample payment webhook structure (accepts any JSON)"
 // @Success 200 {object} types.APIResponse
 // @Failure 400 {object} types.APIResponse
-// @Router /api/v1/payment-webhook [post]
+// @Router /api/v1/payment/webhook [post]
 func PaymentWebhook(c *gin.Context) {
 	// Handle completely dynamic JSON data - accepts any structure
 	var webhookData interface{}
@@ -225,5 +226,6 @@ func PaymentWebhook(c *gin.Context) {
 		webhookData,
 	)
 
+	fmt.Printf("Payment Webhook received: %+v\n", webhookData)
 	c.JSON(http.StatusOK, response)
 }

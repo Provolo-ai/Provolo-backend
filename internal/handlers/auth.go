@@ -149,8 +149,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		MaxAge:   int(expiresIn.Seconds()),
 		Path:     "/",
 		Domain:   "",
-		SameSite: http.SameSiteLaxMode,
-		Secure:   false,
+		SameSite: http.SameSiteStrictMode,
+		Secure:   true,
 		HttpOnly: true,
 	})
 

@@ -307,33 +307,6 @@ paths:
       summary: Optimize freelancer profile using AI
       tags:
       - Profile Optimization
-  /api/v1/payment-webhook:
-    post:
-      consumes:
-      - application/json
-      description: Handles payment webhook notifications from payment providers -
-        accepts any JSON structure
-      parameters:
-      - description: Sample payment webhook structure (accepts any JSON)
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.PaymentWebhookSample'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/types.APIResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/types.APIResponse'
-      summary: Handle payment webhook
-      tags:
-      - payments
   /api/v1/payment/tiers:
     get:
       description: Retrieves all available payment tiers
@@ -388,6 +361,33 @@ paths:
           schema:
             $ref: '#/definitions/types.APIResponse'
       summary: Get payment tier by slug
+      tags:
+      - payments
+  /api/v1/payment/webhook:
+    post:
+      consumes:
+      - application/json
+      description: Handles payment webhook notifications from payment providers -
+        accepts any JSON structure
+      parameters:
+      - description: Sample payment webhook structure (accepts any JSON)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.PaymentWebhookSample'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/types.APIResponse'
+      summary: Handle payment webhook
       tags:
       - payments
   /api/v1/protected/profile:

@@ -213,46 +213,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/payment-webhook": {
-            "post": {
-                "description": "Handles payment webhook notifications from payment providers - accepts any JSON structure",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "payments"
-                ],
-                "summary": "Handle payment webhook",
-                "parameters": [
-                    {
-                        "description": "Sample payment webhook structure (accepts any JSON)",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.PaymentWebhookSample"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/types.APIResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/types.APIResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/payment/tiers": {
             "get": {
                 "description": "Retrieves all available payment tiers",
@@ -340,6 +300,46 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/types.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/payment/webhook": {
+            "post": {
+                "description": "Handles payment webhook notifications from payment providers - accepts any JSON structure",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payments"
+                ],
+                "summary": "Handle payment webhook",
+                "parameters": [
+                    {
+                        "description": "Sample payment webhook structure (accepts any JSON)",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.PaymentWebhookSample"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/types.APIResponse"
                         }
