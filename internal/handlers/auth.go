@@ -149,7 +149,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		MaxAge: int(expiresIn.Seconds()),
 		Path:   "/",
 		// Domain:   "provolo-front-end-dev-env.vercel.app",
-		SameSite: http.SameSiteStrictMode,
+		// SameSite: http.SameSiteStrictMode,
 		Secure:   true,
 		HttpOnly: true,
 	})
