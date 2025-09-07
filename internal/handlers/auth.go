@@ -144,11 +144,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	// Set HTTP-only cookie
 	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     "session",
-		Value:    cookie,
-		MaxAge:   int(expiresIn.Seconds()),
-		Path:     "/",
-		Domain:   "provolo-front-end-dev-env.vercel.app",
+		Name:   "session",
+		Value:  cookie,
+		MaxAge: int(expiresIn.Seconds()),
+		Path:   "/",
+		// Domain:   "provolo-front-end-dev-env.vercel.app",
 		SameSite: http.SameSiteStrictMode,
 		Secure:   true,
 		HttpOnly: true,
