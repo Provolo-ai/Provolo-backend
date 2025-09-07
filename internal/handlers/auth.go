@@ -148,7 +148,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		Value:    cookie,
 		MaxAge:   int(expiresIn.Seconds()),
 		Path:     "/",
-		Domain:   "",
+		Domain:   "provolo-front-end-dev-env.vercel.app",
 		SameSite: http.SameSiteStrictMode,
 		Secure:   true,
 		HttpOnly: true,
