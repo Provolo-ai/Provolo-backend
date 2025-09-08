@@ -56,7 +56,7 @@ var tiers = []types.Tier{
 		Slug:              "pro",
 		Description:       "For freelancers actively applying for jobs and serious about getting clients.",
 		RecurringInterval: types.PlanMonthly,
-		Price:             1999, // $19.99
+		Price:             999, // $9.99
 		PolarRefId:        "503fe6a4-b148-41bb-b779-60334594794e",
 		Features: []types.Feature{
 			{

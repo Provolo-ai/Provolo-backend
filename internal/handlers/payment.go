@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"provolo-api/internal/types"
 	"provolo-api/internal/utils"
 	"sort"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"google.golang.org/api/iterator"
@@ -219,13 +221,60 @@ func PaymentWebhook(c *gin.Context) {
 		return
 	}
 
+	// Log webhookData as JSON
+	webhookJSON, err := json.MarshalIndent(webhookData, "", "  ")
+	if err != nil {
+		fmt.Printf("Payment Webhook received (marshal error): %+v\n", webhookData)
+	} else {
+		fmt.Printf("Payment Webhook received: %s\n", webhookJSON)
+	}
+
+	app, err := utils.GetFirebaseApp(context.Background())
+	if err != nil {
+		errorResponse := types.NewErrorResponse(
+			"Firebase Error",
+			"Failed to initialize Firebase: "+err.Error(),
+		)
+		c.JSON(http.StatusInternalServerError, errorResponse)
+		return
+	}
+
+	client, err := app.Firestore(context.Background())
+	if err != nil {
+		errorResponse := types.NewErrorResponse(
+			"Firestore Error",
+			"Failed to get Firestore client: "+err.Error(),
+		)
+		c.JSON(http.StatusInternalServerError, errorResponse)
+		return
+	}
+	defer client.Close()
+
+	docData := map[string]interface{}{
+		"payload":     webhookData,
+		"received_at": time.Now().UTC(),
+	}
+	// include raw json string when marshaling succeeded
+	if webhookJSON != nil {
+		docData["raw_json"] = string(webhookJSON)
+	}
+
+	if _, _, err := client.Collection("billing_history").Add(context.Background(), docData); err != nil {
+		errorResponse := types.NewErrorResponse(
+			"Firestore Write Error",
+			"Failed to persist webhook payload: "+err.Error(),
+		)
+		// Log the error server-side as well
+		fmt.Printf("Failed to write billing_history document: %v\n", err)
+		c.JSON(http.StatusInternalServerError, errorResponse)
+		return
+	}
+
 	// Return success using the standard APIResponse pattern
 	response := types.NewSuccessResponse(
 		"Payment Webhook",
 		"Webhook received and processed successfully - any data structure accepted",
 		webhookData,
 	)
-
-	fmt.Printf("Payment Webhook received: %+v\n", webhookData)
 	c.JSON(http.StatusOK, response)
 }
