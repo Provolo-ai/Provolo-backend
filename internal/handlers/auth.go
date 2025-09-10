@@ -267,15 +267,16 @@ func (h *AuthHandler) GetUserProfile(c *gin.Context) {
 // @Router /api/v1/auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
 	// Clear the session cookie
-	c.SetCookie(
-		"session",
-		"",
-		-1,
-		"/",
-		"",   // domain
-		true, // secure
-		true, // httpOnly
-	)
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:   "session",
+		Value:  "",
+		MaxAge: int(-1),
+		Path:   "/",
+		// Domain:   "provolo-front-end-dev-env.vercel.app",
+		SameSite: http.SameSiteNoneMode,
+		Secure:   true,
+		HttpOnly: true,
+	})
 
 	c.JSON(http.StatusOK, types.NewSuccessResponse(
 		"Logout Successful",
