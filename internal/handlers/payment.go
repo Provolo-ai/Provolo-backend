@@ -8,8 +8,8 @@ import (
 	"provolo-api/internal/types"
 	"provolo-api/internal/utils"
 	"sort"
-	"time"
 
+	"cloud.google.com/go/firestore"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/api/iterator"
 )
@@ -209,10 +209,9 @@ func GetPaymentTierBySlug(c *gin.Context) {
 // @Router /api/v1/payment/webhook [post]
 func PaymentWebhook(c *gin.Context) {
 	// Handle completely dynamic JSON data - accepts any structure
-	var webhookData interface{}
+	var webhookData map[string]interface{}
 
 	if err := c.ShouldBindJSON(&webhookData); err != nil {
-		// Return error using the standard APIResponse pattern
 		errorResponse := types.NewErrorResponse(
 			"Payment Webhook Error",
 			"Invalid JSON payload: "+err.Error(),
@@ -229,52 +228,80 @@ func PaymentWebhook(c *gin.Context) {
 		fmt.Printf("Payment Webhook received: %s\n", webhookJSON)
 	}
 
-	app, err := utils.GetFirebaseApp(context.Background())
-	if err != nil {
-		errorResponse := types.NewErrorResponse(
-			"Firebase Error",
-			"Failed to initialize Firebase: "+err.Error(),
-		)
-		c.JSON(http.StatusInternalServerError, errorResponse)
-		return
+	// Extract event type and data
+	eventType, _ := webhookData["type"].(string)
+	data, _ := webhookData["data"].(map[string]interface{})
+	checkoutID, _ := data["checkout_id"].(string)
+	status, _ := data["status"].(string)
+	createdAt, _ := data["created_at"].(string)
+	updatedAt, _ := data["modified_at"].(string)
+	if updatedAt == "" {
+		updatedAt, _ = data["updated_at"].(string)
 	}
 
-	client, err := app.Firestore(context.Background())
-	if err != nil {
-		errorResponse := types.NewErrorResponse(
-			"Firestore Error",
-			"Failed to get Firestore client: "+err.Error(),
-		)
-		c.JSON(http.StatusInternalServerError, errorResponse)
-		return
-	}
-	defer client.Close()
+	// Only persist subscription.created, subscription.updated, order.created, and order.updated
+	if eventType == "subscription.created" || eventType == "subscription.updated" || eventType == "order.created" || eventType == "order.updated" {
+		app, err := utils.GetFirebaseApp(context.Background())
+		if err != nil {
+			errorResponse := types.NewErrorResponse(
+				"Firebase Error",
+				"Failed to initialize Firebase: "+err.Error(),
+			)
+			c.JSON(http.StatusInternalServerError, errorResponse)
+			return
+		}
+		client, err := app.Firestore(context.Background())
+		if err != nil {
+			errorResponse := types.NewErrorResponse(
+				"Firestore Error",
+				"Failed to get Firestore client: "+err.Error(),
+			)
+			c.JSON(http.StatusInternalServerError, errorResponse)
+			return
+		}
+		defer client.Close()
 
-	docData := map[string]interface{}{
-		"payload":     webhookData,
-		"received_at": time.Now().UTC(),
-	}
-	// include raw json string when marshaling succeeded
-	if webhookJSON != nil {
-		docData["raw_json"] = string(webhookJSON)
-	}
+		// Upsert logic: store all events as keys in a single 'events' map
+		docRef := client.Collection("billing_history").Doc(checkoutID)
 
-	if _, _, err := client.Collection("billing_history").Add(context.Background(), docData); err != nil {
-		errorResponse := types.NewErrorResponse(
-			"Firestore Write Error",
-			"Failed to persist webhook payload: "+err.Error(),
-		)
-		// Log the error server-side as well
-		fmt.Printf("Failed to write billing_history document: %v\n", err)
-		c.JSON(http.StatusInternalServerError, errorResponse)
-		return
+		// Read existing document to preserve previous events
+		events := map[string]interface{}{}
+		docSnap, err := docRef.Get(context.Background())
+		if err == nil && docSnap.Exists() {
+			if existing, err := docSnap.DataAt("events"); err == nil {
+				if existingMap, ok := existing.(map[string]interface{}); ok {
+					events = existingMap
+				}
+			}
+		}
+		events[eventType] = data
+
+		_, err = docRef.Set(context.Background(), map[string]interface{}{
+			"checkout_id":    checkoutID,
+			"current_status": status,
+			"created_at":     createdAt,
+			"updated_at":     updatedAt,
+			"events":         events,
+		}, firestore.MergeAll)
+		if err != nil {
+			errorResponse := types.NewErrorResponse(
+				"Firestore Write Error",
+				"Failed to persist billing event: "+err.Error(),
+			)
+			fmt.Printf("Failed to write billing_history document: %v\n", err)
+			c.JSON(http.StatusInternalServerError, errorResponse)
+			return
+		}
+	} else {
+		// Log all other events but do not persist
+		fmt.Printf("Webhook event %s received and logged only.\n", eventType)
 	}
 
 	// Return success using the standard APIResponse pattern
-	response := types.NewSuccessResponse(
+	resp := types.NewSuccessResponse(
 		"Payment Webhook",
 		"Webhook received and processed successfully - any data structure accepted",
 		webhookData,
 	)
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, resp)
 }
