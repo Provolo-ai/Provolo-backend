@@ -19,7 +19,7 @@ import (
 var tiers = []types.Tier{
 	{
 		Name:              "Starter (Freemium)",
-		Slug:              "starter",
+		Slug:              types.DefaultTierID,
 		Description:       "Perfect for new freelancers and those exploring the platform.",
 		RecurringInterval: types.PlanMonthly,
 		Price:             0,

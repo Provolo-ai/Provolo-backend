@@ -52,6 +52,7 @@ func SetupRoutes(config *types.Config) http.Handler {
 			auth.GET("/verify", authHandler.VerifySession)
 			auth.POST("logout", authHandler.Logout)
 			auth.Use(middleware.StrictRateLimiter()).POST("login", authHandler.Login)
+			auth.Use(middleware.StrictRateLimiter()).POST("signup", authHandler.SignupOrEnsureUser)
 		}
 
 		// Payments

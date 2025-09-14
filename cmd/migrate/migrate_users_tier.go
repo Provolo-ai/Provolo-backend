@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"provolo-api/internal/env"
+	"provolo-api/internal/types"
 	"provolo-api/internal/utils"
 	"time"
 
@@ -52,7 +53,7 @@ func migrateUsersTier() {
 	defer client.Close()
 
 	// starter tier ref
-	starterTierRef := client.Collection("tiers").Doc("starter")
+	starterTierRef := client.Collection("tiers").Doc(types.DefaultTierID)
 
 	// Query users with empty string tierId
 	fmt.Println("Querying users with tierId == \"\" ...")

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"provolo-api/internal/types"
 	"regexp"
 	"strings"
@@ -36,8 +35,6 @@ func ParseGeminiJSONBlock(text string) (*types.OptimizerResponse, error) {
 
 	var jsonData map[string]interface{}
 	if err := json.Unmarshal([]byte(cleaned), &jsonData); err != nil {
-		// Log the full cleaned JSON to diagnose the issue
-		log.Printf("Full cleaned JSON causing error: %s", cleaned)
 		return nil, fmt.Errorf("failed to parse JSON from response: %v", err)
 	}
 
@@ -91,25 +88,37 @@ func ParseGeminiJSONBlock(text string) (*types.OptimizerResponse, error) {
 
 // cleanGeminiResponse extracts and sanitizes the JSON block from the response
 func cleanGeminiResponse(text string) string {
-	// Step 1: Try to extract JSON block between ```json and ```
+	// Step 1: Trim whitespace first
+	text = strings.TrimSpace(text)
+
+	// Step 2: Check if the entire response is already valid JSON
+	if json.Valid([]byte(text)) {
+		return text
+	}
+
+	// Step 3: Try to extract JSON block between ```json and ```
 	re := regexp.MustCompile("(?s)```json\n(.*?)\n```")
 	matches := re.FindStringSubmatch(text)
 	jsonBlock := text
 	if len(matches) >= 2 {
 		jsonBlock = matches[1]
-	} else {
-		log.Printf("No JSON block found in response, attempting to parse as-is")
+		jsonBlock = strings.TrimSpace(jsonBlock)
+
+		// Check if extracted block is valid
+		if json.Valid([]byte(jsonBlock)) {
+			return jsonBlock
+		}
 	}
 
-	// Step 2: Check if the text looks like JSON (starts with { and ends with })
-	jsonBlock = strings.TrimSpace(jsonBlock)
-	if !strings.HasPrefix(jsonBlock, "{") || !strings.HasSuffix(jsonBlock, "}") {
-		log.Printf("Response is not valid JSON, returning sanitized text")
-		// Escape the entire text as a single JSON string for safety
-		return fmt.Sprintf("{\"raw_response\":%q}", jsonBlock)
+	// Step 4: Final check - if it looks like JSON structure but isn't valid, try sanitization
+	if !strings.HasPrefix(text, "{") || !strings.HasSuffix(text, "}") {
+		return fmt.Sprintf("{\"raw_response\":%q}", text)
 	}
 
-	// Step 3: Pre-process the JSON to fix common escape sequence issues
+	// Step 5: Pre-process the JSON to fix common escape sequence issues
+	// Use the original text for sanitization
+	jsonBlock = text
+
 	// First, temporarily replace valid escape sequences to protect them
 	jsonBlock = strings.ReplaceAll(jsonBlock, "\\\"", "__QUOTE__")
 	jsonBlock = strings.ReplaceAll(jsonBlock, "\\n", "__NEWLINE__")
@@ -140,10 +149,9 @@ func cleanGeminiResponse(text string) string {
 		return fmt.Sprintf("\"%s\"", content)
 	})
 
-	// Step 4: Validate that the result is valid JSON
+	// Step 6: Validate that the result is valid JSON
 	if !json.Valid([]byte(cleaned)) {
-		log.Printf("Sanitized JSON is still invalid, falling back to raw response")
-		return fmt.Sprintf("{\"raw_response\":%q}", jsonBlock)
+		return fmt.Sprintf("{\"raw_response\":%q}", text)
 	}
 
 	return cleaned

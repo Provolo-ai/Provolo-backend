@@ -79,7 +79,7 @@ func migratePromptQuota() {
 		}
 
 		// Default tier
-		tierId := "starter"
+		tierId := types.DefaultTierID
 
 		userDoc, err := client.Collection("users").Doc(upl.UserId).Get(ctx)
 		if err == nil {

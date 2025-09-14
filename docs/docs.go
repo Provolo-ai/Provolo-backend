@@ -91,6 +91,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/auth/signup": {
+            "post": {
+                "description": "Checks if user exists in Firestore and creates profile with starter tier if not",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "User signup or ensure existence",
+                "parameters": [
+                    {
+                        "description": "Firebase ID token",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/types.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/types.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/types.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/auth/verify": {
             "get": {
                 "description": "Verifies the current user session and returns user info",
